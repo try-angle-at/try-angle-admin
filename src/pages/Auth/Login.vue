@@ -1,93 +1,104 @@
 <template>
-  <BoxContainer style="background-color: #FFFFFF; padding: 0px 16px 0px 16px;">
-    <v-row 
-      no-gutters
-      class="justify-center | pt-12 | mb-8"
+  <v-container style="height: 100vh; width: 100vw;" class="d-flex | align-item-center | justify-center">
+    <v-card 
+      style="border-radius:24px; width: 560px; background-color: #FFFFFF; padding: 16px 24px 72px 24px;"
+      class="elevation-3"
     >
-      <v-col cols="12" class="mt-1 | header-title">다시 만나서 반가워요!</v-col>
-      <v-col cols="12" class="mt-1 | header-subtitle">학교 이메일로 로그인해주세요.</v-col>
-    </v-row>
-    <v-row no-gutters class="justify-start | label-text">
-      이메일
-    </v-row>
-    <v-row no-gutters class="justify-center | mt-1">
-      <v-text-field
-        v-model="userEmail"
-        placeholder="email@cau.ac.kr" 
-        class="inputbox"
-        variant="outlined" density="comfortable" rounded="lg" bg-color="#F9FAFB" base-color="#E5E8EB" color="#E5E8EB"
-      />
-    </v-row>
-    <v-row no-gutters class="justify-start | label-text">
-      비밀번호
-    </v-row>
-    <v-row no-gutters class="justify-center | mt-1">
-      <v-text-field
-        v-model="userPassword"
-        placeholder="password"
-        :type="showPassword ? 'text' : 'password'"
-        :append-inner-icon="showPassword ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"
-        @click:append-inner="showPassword = !showPassword"
-        class="inputbox"
-        variant="outlined" density="comfortable" rounded="lg" bg-color="#F9FAFB" base-color="#E5E8EB" color="#E5E8EB"
-      />
-    </v-row>
-
-    <v-row no-gutters class="justify-space-between | align-item-center | mt-1 | mb-8">
-      <v-col cols="auto">
-        <v-checkbox
-          label="자동로그인"
-          hide-details
-          density="comfortable"
-          bg-color="#CDD1E0"
-          color="#CDD1E0"
+      <v-row 
+        no-gutters
+        class="justify-center | pt-12 | mb-8"
+      >
+        <v-col cols="auto" class="header-subtitle">
+          <v-img
+          src="@/assets/title.png"
+          alt="Fooding Logo"
+          contain width="200"
+          />
+        </v-col>
+        <v-col cols="12" class="mt-2 | header-title">TryAngle 관리자 페이지</v-col>
+      </v-row>
+      <v-row no-gutters class="justify-start | label-text">
+        이메일
+      </v-row>
+      <v-row no-gutters class="justify-center | mt-1">
+        <v-text-field
+          v-model="userEmail"
+          placeholder="tryangle@cau.ac.kr" 
+          class="inputbox"
+          variant="outlined" density="comfortable" rounded="lg" bg-color="#F9FAFB" base-color="#E5E8EB" color="#E5E8EB"
         />
-      </v-col>
-      <v-col
-        cols="auto"
-        class="info-text"
-        style="color: #E86969;"
-        @click="handleClickBtn('findIdPw')"
-      >
-        아이디/비밀번호 찾기
-      </v-col>
+      </v-row>
+      <v-row no-gutters class="justify-start | label-text">
+        비밀번호
+      </v-row>
+      <v-row no-gutters class="justify-center | mt-1">
+        <v-text-field
+          v-model="userPassword"
+          placeholder="password"
+          :type="showPassword ? 'text' : 'password'"
+          :append-inner-icon="showPassword ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"
+          @click:append-inner="showPassword = !showPassword"
+          class="inputbox"
+          variant="outlined" density="comfortable" rounded="lg" bg-color="#F9FAFB" base-color="#E5E8EB" color="#E5E8EB"
+        />
+      </v-row>
 
-    </v-row>
+      <v-row no-gutters class="justify-space-between | align-item-center | mt-1 | mb-8">
+        <v-col cols="auto">
+          <v-checkbox
+            label="자동로그인"
+            hide-details
+            density="comfortable"
+            bg-color="#CDD1E0"
+            color="#CDD1E0"
+          />
+        </v-col>
+        <v-col
+          cols="auto"
+          class="info-text"
+          style="color: #E86969;"
+          @click="handleClickBtn('findIdPw')"
+        >
+          아이디/비밀번호 찾기
+        </v-col>
+
+      </v-row>
 
 
-    <v-row no-gutters class="justify-center | mt-4 | mb-4">
-      <v-btn
-        @click="handleClickBtn('login')"
-        variant="outlined"
-        class="active-btn"
-        :disabled="!active || isSubmitting"
-        :loading="isSubmitting"
-        v-if="active"
-      >로그인</v-btn>
-      <v-btn
-        variant="outlined"
-        class="readonly-btn"
-        readonly
-        v-else
-      >로그인</v-btn>
-    </v-row>
+      <v-row no-gutters class="justify-center | mt-4 | mb-4">
+        <v-btn
+          @click="handleClickBtn('login')"
+          variant="outlined"
+          class="active-btn"
+          :disabled="!active || isSubmitting"
+          :loading="isSubmitting"
+          v-if="active"
+        >로그인</v-btn>
+        <v-btn
+          variant="outlined"
+          class="readonly-btn"
+          readonly
+          v-else
+        >로그인</v-btn>
+      </v-row>
 
-    <v-row no-gutters class="justify-center | align-item-center | mt-12">
-      <v-col 
-        cols="auto" 
-        class="info-text | mr-2"
-      >
-        계정이 없으신가요?
-      </v-col>
-      <v-col
-        cols="auto"
-        class="info-text | underline | login-text-link"
-        @click="handleClickBtn('goToRegister')"
-      >
-        회원가입
-      </v-col>
-    </v-row>
-  </BoxContainer>
+      <v-row no-gutters class="justify-center | align-item-center | mt-12">
+        <v-col 
+          cols="auto" 
+          class="info-text | mr-2"
+        >
+          계정이 없으신가요?
+        </v-col>
+        <v-col
+          cols="auto"
+          class="info-text | underline | login-text-link"
+          @click="handleClickBtn('goToRegister')"
+        >
+          회원가입
+        </v-col>
+      </v-row>
+    </v-card>
+  </v-container>
 
   <!-- 다이얼로그 -->
   <v-dialog v-model="dialog.isActive" width="400px">
@@ -100,9 +111,6 @@
       />
 
       <v-card-title>
-        <v-row no-gutters class="align-center | justify-center">
-          <v-icon size="64" color="#FF6129" icon="$cus-complete"/>
-        </v-row>
         <v-row no-gutters class="align-center | justify-center | mt-3"
           style="color: #101828; font-size: 20px; font-weight: 400; letter-spacing: -0.45px;"
         >
@@ -127,7 +135,6 @@
 // ----- 선언부 ----- //
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import BoxContainer from "@/components/BoxContainer.vue";
 import { navigateTo } from '@/common/RouterUtil.js';
 import * as HttpHandler from '@/common/HttpHandler.js';
 
