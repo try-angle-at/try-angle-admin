@@ -2,7 +2,7 @@
     <v-container class="orange-card | justify-center">
 
       <v-row no-gutters class="justify-center">
-        <v-avatar size="96" image="https://placehold.co/96X96"/>
+        <v-avatar size="96" :image="`${imageBaseUrl}/profiles/default.png`"/>
       </v-row>
       <v-row no-gutters class="justify-center">
         <v-chip class="profile-chip | mt-4 | mb-12">{{ userName }}</v-chip>
@@ -111,7 +111,9 @@ const emit = defineEmits([
   'show-left-btn',
 ]);
 
-const userName = ref("고예경")
+const userName = ref("사용자")
+
+const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL).replace(/\/$/, '');
 
 const dialog = ref({
   title: '',
