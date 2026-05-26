@@ -2,10 +2,11 @@
  * HTTP 요청을 처리하는 클래스
  * 공통 헤더, 베이스 URL, 에러 핸들링 등을 관리합니다.
  */
+
 class HttpClient {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'https://fooding-backend-e0yf.onrender.com';
-    this.timeout = import.meta.env.VITE_API_TIMEOUT || 10000;
+    this.baseURL = import.meta.env.VITE_API_BASE_URL;
+    this.timeout = Number(import.meta.env.VITE_API_TIMEOUT);
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
