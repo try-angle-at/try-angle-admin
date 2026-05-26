@@ -11,7 +11,7 @@
         <v-img
           src="@/assets/title.png"
           alt="Fooding Logo"
-          contain width="84"
+          contain width="200"
           @click="handleClickBtn('goToHome')"
         />
       </v-col>
@@ -144,35 +144,34 @@ const publicPages = ['/login', '/register'];
 
 // 페이지별 네비게이션 설정
 const pageList = ref([
-  { 
-    page: 'Home',
-    name: '홈', 
-    path: '/home', 
+  {
+    name: '데이터 관리',
     child: [
-      { 
-        page: 'GroupList',
-        name: '홈', 
-        path: '/group', 
-        child: [      
-          { 
-            page: 'GroupList2',
-            name: '홈', 
-            path: '/group2', 
-          },
-        ]
+      {
+        page: 'RealtimeList',
+        name: '실시간 로그 데이터 목록',
+        path: '/dashboard/realtime-list',
       },
-    ]
+    ],
   },
-  { 
-    page: 'UserMenu',
-    name: '마이페이지', 
-    path: '/user', 
+  {
+    name: '컨텐츠 관리',
     child: [
-      { 
-        page: 'UserProfile',
-        name: '프로필 편집', 
-        path: '/user/profile'
-      }
+      {
+        page: 'RefImgManagement',
+        name: '레퍼런스 이미지 관리',
+        path: '/content/refimg-list',
+      },
+      {
+        page: 'ProductManagement',
+        name: '상품 관리',
+        path: '/content/prod-list',
+      },
+      {
+        page: 'ReviewManagement',
+        name: '후기 사진 관리',
+        path: '/content/review-list',
+      },
     ],
   },
 ]);
@@ -324,13 +323,17 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 .side-nav-header {
   height: 64px;
-  align-items: center;
-  align-content: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
   cursor: pointer;
 }
 
 .side-nav-list {
-  padding: 16px 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 /* 네비게이션 바 스타일 */

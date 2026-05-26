@@ -1,6 +1,17 @@
 <template>
   <div>
+    <div
+      v-if="isLabelOnly"
+      class="side-nav-label"
+      :style="{ '--side-nav-level': level }"
+    >
+      <div class="side-nav-item__content">
+        <span class="side-nav-item__title">{{ item.name }}</span>
+      </div>
+    </div>
+
     <v-list-item
+      v-else
       rounded="lg"
       :class="[
         'side-nav-item',
@@ -52,6 +63,7 @@ const props = defineProps({
 const router = useRouter();
 
 const hasChildren = computed(() => Array.isArray(props.item.child) && props.item.child.length > 0);
+const isLabelOnly = computed(() => props.level === 0 && hasChildren.value && !props.item.path);
 const isCurrentPage = computed(() => props.item.path === props.currentPath);
 const isActiveBranch = computed(() => isBranchActive(props.item, props.currentPath));
 
@@ -75,6 +87,12 @@ function handleItemClick() {
 </script>
 
 <style scoped>
+.side-nav-label {
+  margin: 8px 0 4px;
+  min-height: 24px;
+  color: #6b7280;
+}
+
 .side-nav-item {
   margin-bottom: 6px;
   min-height: 44px;
@@ -102,6 +120,11 @@ function handleItemClick() {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.side-nav-label .side-nav-item__title {
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .side-nav-children {
