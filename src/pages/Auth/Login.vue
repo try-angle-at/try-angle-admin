@@ -134,9 +134,9 @@
 <script setup>
 // ----- 선언부 ----- //
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
-import * as HttpHandler from '@/common/HttpHandler.js';
+import httpClient, * as HttpHandler from '@/common/HttpHandler.js';
 
 const emit = defineEmits(['hide-top-appbar', 'hide-side-appbar']);
 const router = useRouter(); 
@@ -185,23 +185,39 @@ async function handleLogin() {
   isSubmitting.value = true;
 
   try {
-    // const response = await HttpHandler.login({
-    //   email: userEmail.value,
-    //   password: userPassword.value,
-    // });
+    const response = await HttpHandler.login({
+      email: userEmail.value,
+      password: userPassword.value,
+    });
 
-    if (userEmail.value !== 'guest' || userPassword.value !== 'guest') {
-      throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.<br/>임시 계정: guest / guest');
+    const accessToken = response?.accessToken;
+
+    if (!accessToken) {
+      throw new Error('로그인 응답에 accessToken이 없습니다. 서버 응답 형식을 확인해주세요.');
     }
 
-    const response = {
-      id: 'guest',
-      name: '게스트',
-      role: 'guest'
-    };
+    httpClient.setAuthToken(accessToken);
+    localStorage.setItem('accessToken', accessToken);
+
+    let user = response?.user ?? response?.data ?? null;
+
+    if (!user) {
+      try {
+        const meResponse = await HttpHandler.getMe();
+        user = meResponse?.user ?? meResponse?.data ?? meResponse;
+      } catch (profileError) {
+        console.warn('사용자 정보 조회 실패:', profileError);
+      }
+    }
+
+    if (!user || typeof user !== 'object') {
+      user = {
+        email: userEmail.value,
+      };
+    }
 
     console.log('로그인 성공 - 응답:', response);
-    localStorage.setItem('user', JSON.stringify(response));
+    localStorage.setItem('user', JSON.stringify(user));
     navigateTo(router, '/');
 
   } catch (error) {
