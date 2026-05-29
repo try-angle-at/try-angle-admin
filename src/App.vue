@@ -158,19 +158,19 @@ const pageList = ref([
     name: '컨텐츠 관리',
     child: [
       {
-        page: 'RefImgManagement',
+        page: 'RefImgList',
         name: '레퍼런스 이미지 관리',
-        path: '/content/refimg-list',
+        path: '/ref-images',
       },
       {
-        page: 'ProductManagement',
+        page: 'ProdList',
         name: '상품 관리',
-        path: '/content/prod-list',
+        path: '/products',
       },
       {
-        page: 'ReviewManagement',
+        page: 'SnapList',
         name: '후기 사진 관리',
-        path: '/content/review-list',
+        path: '/snaps',
       },
     ],
   },
