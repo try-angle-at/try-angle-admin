@@ -72,8 +72,6 @@ import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
 
-import DataTable from '@/components/DataTable.vue';
-
 import * as HttpHandler from '@/common/HttpHandler.js';
 
 const emit = defineEmits([
@@ -102,24 +100,15 @@ const statusOptions = [
   { label: '숨김', value: 0 },
 ];
 
+const imgItems = ref([]);
 
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
-  fetchListProducts();
+  fetchListReferences();
 });
 
 // ----- 함수 정의 ----- //
-function getStatusLabel(value) {
-  if (value === 1 || value === '1') {
-    return '노출';
-  }
-  if (value === 0 || value === '0') {
-    return '숨김';
-  }
-  return '-';
-}
-
 function buildThumbnailUrl(path) {
   if (!path) {
     return null;
@@ -138,45 +127,46 @@ function buildThumbnailUrl(path) {
   return imageBaseUrl ? `${imageBaseUrl}/${relativePath}` : `/${relativePath}`;
 }
 
-async function fetchListProducts() {
+async function fetchListReferences() {
   isLoading.value = true;
 
   try {
-    const response = await HttpHandler.listProducts({
+    const response = await HttpHandler.listReferences({
       page: pageNation.value.current,
       limit: pageNation.value.limit,
-      pStat: search.value.status,
     });
 
-    const list = response.data.items;
-    const total = response.data.total;
+    const list = response?.data?.items || [];
+    const total = response?.data?.total || 0;
 
-    let mappedRows = list.map((product = {}) => ({
-      id: product.id,
-      userId: product.userId,
-      name: product.name,
-      brand: product.brand,
-      price: typeof product.price === 'number' ? product.price.toLocaleString() : product.price,
-      thumbUrl: buildThumbnailUrl(product.thumbUrl),
-      pStat: getStatusLabel(product.pStat),
-      cDate: util.formatUnixDate(product.cDate),
-      uDate: util.formatUnixDate(product.uDate),
-      action: '상세보기',
+    let mappedRows = list.map((reference = {}) => ({
+      id: reference.imgId,
+      userId: reference.user?.userId,
+      nickname: reference.user?.nickname || '-',
+      title: reference.title || '-',
+      desc: reference.desc || '-',
+      imgUrl: buildThumbnailUrl(reference.imgUrl),
+      categoryId: reference.ctg?.ctgId,
+      categoryName: reference.ctg?.ctgName || '-',
+      keywordList: Array.isArray(reference.kwd) ? reference.kwd : [],
+      useCnt: reference.useCnt ?? 0,
+      cDate: util.formatUnixDateTime(reference.cDate),
+      uDate: util.formatUnixDateTime(reference.uDate),
     }));
 
     const keyword = search.value.keyword.trim().toLowerCase();
     if (keyword) {
-      mappedRows = mappedRows.filter((item) => String(item.name).toLowerCase().includes(keyword));
+      mappedRows = mappedRows.filter((item) => String(item.title).toLowerCase().includes(keyword));
       totalCount.value = mappedRows.length;
     } else {
       totalCount.value = total;
     }
 
-    tableItems.value = mappedRows;
+    imgItems.value = mappedRows;
 
   } catch (error) {
-    console.error('상품 목록 조회 실패:', error);
-    tableItems.value = [];
+    console.error('레퍼런스 이미지 목록 조회 실패:', error);
+    imgItems.value = [];
     totalCount.value = 0;
   } finally {
     isLoading.value = false;
@@ -193,15 +183,15 @@ function handleClickBtn(action, value) {
 
     case 'search':
       pageNation.value.current = 1;
-      fetchListProducts();
+      fetchListReferences();
       break;
 
     case 'goToCreate':
-      navigateTo(router, '/products/create');
+      navigateTo(router, '/ref-images/create');
       break;
 
     case 'goToDetail':
-      navigateTo(router, `/products/${value}`);
+      navigateTo(router, `/ref-images/${value}`);
       break;
     default:
       console.error('알 수 없는 인증 액션 타입:', action);
@@ -219,13 +209,13 @@ function handleRowClick({ item }) {
 
 function handlePageChange(nextPage) {
   pageNation.value.current = nextPage;
-  fetchListProducts();
+  fetchListReferences();
 }
 
 function handleItemsPerPageChange(limit) {
   pageNation.value.limit = limit;
   pageNation.value.current = 1;
-  fetchListProducts();
+  fetchListReferences();
 }
 </script> 
 
