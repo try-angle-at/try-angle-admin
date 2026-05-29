@@ -14,6 +14,20 @@ class HttpClient {
   }
 
   /**
+   * localStorage에 저장된 토큰을 기본 헤더로 복원
+   */
+  initializeAuthFromStorage() {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        this.setAuthToken(token);
+      }
+    } catch (error) {
+      console.warn('[HTTP] 저장된 인증 토큰 복원 실패:', error);
+    }
+  }
+
+  /**
    * Authorization 토큰 설정
    * @param {string} token - 인증 토큰
    */
@@ -146,8 +160,14 @@ class HttpClient {
       case 400:
         throw new Error(`잘못된 요청입니다: ${errorMessage}`);
       case 401:
-        // 인증 실패 시 토큰 제거 및 로그인 페이지로 리다이렉트 처리 가능
+        // 인증 실패 시 메모리/스토리지 토큰 모두 제거
         this.setAuthToken(null);
+        try {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('user');
+        } catch (storageError) {
+          console.warn('[HTTP] 인증 정보 스토리지 정리 실패:', storageError);
+        }
         throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
       case 403:
         throw new Error('접근 권한이 없습니다.');
@@ -219,6 +239,7 @@ class HttpClient {
 
 // 싱글톤 인스턴스 생성 및 export
 const httpClient = new HttpClient();
+httpClient.initializeAuthFromStorage();
 
 export default httpClient;
 
