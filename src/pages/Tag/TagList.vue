@@ -62,11 +62,17 @@
 
           <template #item.action="{ item }">
             <v-btn
+              class="detail-btn | fill-grey | mr-1"
+              size="small"
+              variant="outlined"
+              @click.stop="handleClickBtn('edit', (item?.raw ?? item)?.id)"
+            >수정</v-btn>
+            <v-btn
               class="detail-btn"
               size="small"
               variant="outlined"
-              @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
-            >상세보기</v-btn>
+              @click.stop="handleClickBtn('delete', (item?.raw ?? item)?.id)"
+            >삭제</v-btn>
           </template>
 
         </data-table>
@@ -116,7 +122,7 @@ const headerItems = [
   { text: '등록자', value: 'userId' },
   { text: '등록일', value: 'cDate' },
   { text: '수정일', value: 'uDate' },
-  { text: '상세', value: 'action' },
+  { text: '액션', value: 'action' },
 ];
 
 const tableItems = ref([]);
@@ -163,7 +169,6 @@ async function fetchListTags() {
       parentCode: tag.parentCode || '-',
       cDate: util.formatUnixDateTime(tag.cDate),
       uDate: util.formatUnixDateTime(tag.uDate),
-      action: '상세보기',
     }));
 
     const keyword = search.value.keyword.trim().toLowerCase();
@@ -202,9 +207,14 @@ function handleClickBtn(action, value) {
       navigateTo(router, '/tag/create');
       break;
 
-    case 'goToDetail':
-      navigateTo(router, `/tag/${value}`);
+    case 'edit':
+      console.log('태그 액션:', action, 'id:', value);
       break;
+
+    case 'delete':
+      console.log('태그 액션:', action, 'id:', value);
+      break;
+
     default:
       console.error('알 수 없는 태그 액션 타입:', action);
   }
@@ -257,8 +267,8 @@ function handleItemsPerPageChange(limit) {
     color: #4A5565;
 }
 .fill-grey {
-    color: #ffffff;
-    background-color: #4A5565;
+    color: #ffffff !important;
+    background-color: #4A5565 !important;
 }
 
 /* .inputbox :deep(.v-input__details) {
@@ -285,15 +295,15 @@ function handleItemsPerPageChange(limit) {
 }
 
 .detail-btn {
-    padding: 4px 8px;
-    align-items: center;
-    border-radius: 8px;
-    border: 0.7px solid #4A5565;
-    color: #4A5565;
-    letter-spacing: -0.15px;
-    font-family: Pretendard;
-    font-size: 12px;
-    font-weight: 500;
+  padding: 4px 8px;
+  align-items: center;
+  border-radius: 8px;
+  border: 0.7px solid #4A5565;
+  color: #4A5565;
+  letter-spacing: -0.15px;
+  font-family: Pretendard;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 </style>

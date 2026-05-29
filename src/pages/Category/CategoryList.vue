@@ -56,11 +56,17 @@
     >
       <template #item.action="{ item }">
         <v-btn
+          class="detail-btn | fill-grey | mr-1"
+          size="small"
+          variant="outlined"
+          @click.stop="handleClickBtn('edit', (item?.raw ?? item)?.id)"
+        >수정</v-btn>
+        <v-btn
           class="detail-btn"
           size="small"
           variant="outlined"
-          @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
-        >상세보기</v-btn>
+          @click.stop="handleClickBtn('delete', (item?.raw ?? item)?.id)"
+        >삭제</v-btn>
       </template>
     </data-table>
   </v-container>
@@ -100,7 +106,7 @@ const headerItems = [
   { text: '카테고리명', value: 'name' },
   { text: '등록일', value: 'cDate' },
   { text: '수정일', value: 'uDate' },
-  { text: '상세', value: 'action' },
+  { text: '액션', value: 'action' },
 ];
 
 const tableItems = ref([]);
@@ -137,7 +143,6 @@ async function fetchListCategories() {
       name: category.name || '-',
       cDate: util.formatUnixDateTime(category.cDate),
       uDate: util.formatUnixDateTime(category.uDate),
-      action: '상세보기',
     }));
 
     const keyword = search.value.keyword.trim().toLowerCase();
@@ -175,8 +180,12 @@ function handleClickBtn(action, value) {
       navigateTo(router, '/category/create');
       break;
 
-    case 'goToDetail':
-      navigateTo(router, `/category/${value}`);
+    case 'edit':
+      console.log('태그 액션:', action, 'id:', value);
+      break;
+
+    case 'delete':
+      console.log('태그 액션:', action, 'id:', value);
       break;
 
     default:
@@ -232,10 +241,9 @@ function handleItemsPerPageChange(limit) {
   border: 0.7px solid #4A5565;
   color: #4A5565;
 }
-
 .fill-grey {
-  color: #ffffff;
-  background-color: #4A5565;
+    color: #ffffff !important;
+    background-color: #4A5565 !important;
 }
 
 .inputbox :deep(.v-input__control) {
