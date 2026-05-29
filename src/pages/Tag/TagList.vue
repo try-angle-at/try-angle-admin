@@ -10,8 +10,8 @@
                     hide-details
                 />
                 <v-select
-                    v-model="search.status"
-                    :items="statusOptions"
+                  v-model="search.parentCode"
+                  :items="parentCodeOptions"
                     item-title="label"
                     item-value="value"
                     placeholder="상위 태그 선택" 
@@ -43,7 +43,7 @@
                     @click="handleClickBtn('goToCreate')"
                     variant="outlined"
                     class="active-thin-btn | btn-width"
-                >이미지 등록</v-btn>
+                >태그 등록</v-btn>
             </v-col>
         </v-row>
 
@@ -58,26 +58,6 @@
             @rowClick="handleRowClick"
         > 
 
-          <template #item.thumbUrl="{ item }">
-            <v-img
-              v-if="(item?.raw ?? item)?.thumbUrl"
-              :src="(item?.raw ?? item)?.thumbUrl"
-              width="64"
-              height="64"
-              cover
-              class="thumb-img"
-            />
-            <span v-else>-</span>
-          </template>
-
-          <template #item.pStat="{ item }">
-            <span
-              v-if="(item?.raw ?? item)?.pStat && (item?.raw ?? item)?.pStat !== '-'"
-              class="status-tag"
-            >{{ (item?.raw ?? item)?.pStat }}</span>
-            <span v-else>-</span>
-          </template>
-        
           <template #item.action="{ item }">
             <v-btn
               class="detail-btn"
@@ -109,33 +89,28 @@ const emit = defineEmits([
 ]);
 const router = useRouter(); 
 const util = Util.getInstance();
-const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, '');
 
 const search = ref({
   keyword: '',
-  status: null,
+  parentCode: null,
 });
 
 const pageNation = ref({
   current: 1,
-  limit: 20,
+  limit: 10,
 });
 
 const totalCount = ref(0);
 const isLoading = ref(false);
 
-const statusOptions = [
-  { label: '전체 상태', value: null },
-  { label: '노출', value: 1 },
-  { label: '숨김', value: 0 },
-];
+const parentCodeOptions = ref([
+  { label: '전체 상위 태그', value: null },
+]);
 
 const headerItems = [
-  { text: '썸네일', value: 'thumbUrl' },
-  { text: '브랜드', value: 'brand' },
-  { text: '이미지명', value: 'name' },
-  { text: '가격', value: 'price' },
-  { text: '상태', value: 'pStat' },
+  { text: '태그명', value: 'tagName' },
+  { text: '태그 코드', value: 'code' },
+  { text: '상위 태그 코드', value: 'parentCode' },
   { text: '등록자', value: 'userId' },
   { text: '등록일', value: 'cDate' },
   { text: '수정일', value: 'uDate' },
@@ -147,58 +122,44 @@ const tableItems = ref([]);
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
-  fetchListProducts();
+  fetchListTags();
 });
 
 // ----- 함수 정의 ----- //
 
-function buildThumbnailUrl(path) {
-  if (!path) {
-    return null;
-  }
-
-  const normalizedPath = String(path).trim();
-  if (!normalizedPath) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(normalizedPath)) {
-    return normalizedPath;
-  }
-
-  const relativePath = normalizedPath.replace(/^\/+/, '');
-  return imageBaseUrl ? `${imageBaseUrl}/${relativePath}` : `/${relativePath}`;
-}
-
-async function fetchListProducts() {
+async function fetchListTags() {
   isLoading.value = true;
 
   try {
-    const response = await HttpHandler.listProducts({
+    const response = await HttpHandler.listTags({
       page: pageNation.value.current,
       limit: pageNation.value.limit,
-      pStat: search.value.status,
+      parentCode: search.value.parentCode,
     });
 
-    const list = response.data.items;
-    const total = response.data.total;
+    const list = response?.data?.items || [];
+    const total = response?.data?.total || 0;
 
-    let mappedRows = list.map((product = {}) => ({
-      id: product.id,
-      userId: product.userId,
-      name: product.name,
-      brand: product.brand,
-      price: typeof product.price === 'number' ? product.price.toLocaleString() : product.price,
-      thumbUrl: buildThumbnailUrl(product.thumbUrl),
-      pStat: getStatusLabel(product.pStat),
-      cDate: util.formatUnixDate(product.cDate),
-      uDate: util.formatUnixDate(product.uDate),
+    const uniqueParentCode = Array.from(new Set(list.map((item = {}) => item.parentCode).filter(Boolean)));
+    parentCodeOptions.value = [
+      { label: '전체 상위 태그', value: null },
+      ...uniqueParentCode.map((value) => ({ label: value, value })),
+    ];
+
+    let mappedRows = list.map((tag = {}) => ({
+      id: tag.id,
+      userId: tag.userId,
+      tagName: tag.tagName || '-',
+      code: tag.code || '-',
+      parentCode: tag.parentCode || '-',
+      cDate: util.formatUnixDate(tag.cDate),
+      uDate: util.formatUnixDate(tag.uDate),
       action: '상세보기',
     }));
 
     const keyword = search.value.keyword.trim().toLowerCase();
     if (keyword) {
-      mappedRows = mappedRows.filter((item) => String(item.name).toLowerCase().includes(keyword));
+      mappedRows = mappedRows.filter((item) => String(item.tagName).toLowerCase().includes(keyword));
       totalCount.value = mappedRows.length;
     } else {
       totalCount.value = total;
@@ -207,7 +168,7 @@ async function fetchListProducts() {
     tableItems.value = mappedRows;
 
   } catch (error) {
-    console.error('상품 목록 조회 실패:', error);
+    console.error('태그 목록 조회 실패:', error);
     tableItems.value = [];
     totalCount.value = 0;
   } finally {
@@ -219,24 +180,24 @@ function handleClickBtn(action, value) {
   switch (action) {
     case 'reset':
       search.value.keyword = '';
-      search.value.status = null;
+      search.value.parentCode = null;
       pageNation.value.current = 1;
       break;
 
     case 'search':
       pageNation.value.current = 1;
-      fetchListProducts();
+      fetchListTags();
       break;
 
     case 'goToCreate':
-      navigateTo(router, '/products/create');
+      navigateTo(router, '/tag/create');
       break;
 
     case 'goToDetail':
-      navigateTo(router, `/products/${value}`);
+      navigateTo(router, `/tag/${value}`);
       break;
     default:
-      console.error('알 수 없는 인증 액션 타입:', action);
+      console.error('알 수 없는 태그 액션 타입:', action);
   }
 }
 
@@ -251,13 +212,13 @@ function handleRowClick({ item }) {
 
 function handlePageChange(nextPage) {
   pageNation.value.current = nextPage;
-  fetchListProducts();
+  fetchListTags();
 }
 
 function handleItemsPerPageChange(limit) {
   pageNation.value.limit = limit;
   pageNation.value.current = 1;
-  fetchListProducts();
+  fetchListTags();
 }
 </script> 
 
@@ -326,24 +287,4 @@ function handleItemsPerPageChange(limit) {
     font-weight: 500;
 }
 
-.thumb-img {
-    border-radius: 8px; 
-    border: 0.7px solid #E5E7EB;
-    background-color: #F9FAFB;
-    margin: 4px;
-}
-
-.status-tag {
-  display: flex;
-  padding: 4px 8px;
-  justify-content: center;
-  align-items: center;
-  width: fit-content;
-  border-radius: 100px;
-  background: #E6F0FF;
-  color: #2B7FFF;
-  font-family: Pretendard;
-  font-size: 12px;
-  font-weight: 500;
-}
 </style>
