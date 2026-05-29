@@ -1,10 +1,13 @@
 <template>
+
     <v-data-table
       class="data-table"
+      type="outlined"
       :headers="normalizedHeaders"
       :items="items"
       :item-value="itemKey"
       :items-per-page="internalItemsPerPage"
+      items-per-page-text="display"
       :page="internalPage"
       :sort-by="internalSortBy"
       :search="internalSearch"
@@ -22,6 +25,37 @@
       @update:sort-by="handleSortByUpdate"
       @click:row="handleClickRow"
     >
+      <template #bottom="{ pageCount }">
+        <v-row no-gutters class="data-table-footer">
+          <v-col class="data-table-footer__items-per-page">
+            <v-col cols="auto" class="items-per-page-label">display</v-col>
+            <v-select
+              class="items-per-page-select"
+              :model-value="internalItemsPerPage"
+              :items="itemsPerPageOptions"
+              density="compact"
+              hide-details
+              variant="outlined"
+              @update:model-value="handleItemsPerPageUpdate"
+            />
+          </v-col>
+
+          <v-pagination
+            class="table-pagination"
+            :model-value="internalPage"
+            :length="pageCount"
+            :total-visible="5"
+            density="comfortable"
+            rounded="circle"
+            active-color="#101828"
+            color="#6B7280"
+            prev-icon="mdi-chevron-left"
+            next-icon="mdi-chevron-right"
+            @update:model-value="handlePageUpdate"
+          />
+        </v-row>
+      </template>
+
       <template v-for="slotName in forwardedSlotNames" :key="slotName" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps" />
       </template>
@@ -154,6 +188,7 @@ const internalSearch = ref(props.search);
 const internalPage = ref(props.page);
 const internalItemsPerPage = ref(props.itemsPerPage);
 const internalSortBy = ref(props.sortBy);
+const itemsPerPageOptions = [5, 10, 20, 50, 100];
 
 watch(() => props.search, (value) => {
   internalSearch.value = value;
@@ -210,24 +245,31 @@ function handleClickRow(event, item) {
 .data-table {
   width: 100%;
   border: 1px solid #E5E7EB;
+  border-right: 1px solid #E5E7EB;
+  border-radius: 8px;
   background-color: #FFFFFF;
   overflow: hidden;
+  box-shadow: none !important;
+}
+
+.data-table :deep(.v-table) {
+  box-shadow: none !important;
 }
 
 .data-table :deep(thead th) {
-  background-color: #F9FAFB;
-  color: #4B5563;
+  background-color: #F3F4F6;
+  color: #6A7282;
   font-size: 13px;
   font-weight: 700;
 }
 
 .data-table :deep(tbody td) {
   font-size: 14px;
-  color: #111827;
+  color: #101828;
   border-bottom: 1px solid #F3F4F6;
 }
 
-.data-table :deep(.v-data-table-footer) {
+.data-table-footer {
   border-top: 1px solid #F3F4F6;
   background-color: #FFFFFF;
   display: grid;
@@ -237,48 +279,53 @@ function handleClickRow(event, item) {
   min-height: 56px;
 }
 
-.data-table :deep(.v-data-table-footer__items-per-page) {
+.data-table-footer__items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   grid-column: 1;
+  margin-left: 16px;
   justify-self: start;
 }
 
-.data-table :deep(.v-data-table-footer__pagination) {
+.items-per-page-label {
+  color: #6A7282;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.items-per-page-select {
+  max-width: 100px;
+}
+
+.items-per-page-select :deep(.v-field) {
+  box-shadow: none;
+}
+
+.items-per-page-select :deep(.v-field--focused .v-field__outline),
+.items-per-page-select :deep(.v-field--variant-outlined.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1;
+  color: #4A5565;
+}
+
+.items-per-page-select :deep(.v-field__input),
+.items-per-page-select :deep(.v-select__selection-text) {
+  font-weight: 400;
+}
+
+.table-pagination {
   grid-column: 2;
   justify-self: center;
 }
 
-.data-table :deep(.v-data-table-footer__info) {
-  grid-column: 3;
-  justify-self: end;
+.table-pagination :deep(.v-btn) {
+  box-shadow: none;
+  min-width: 32px;
+  font-weight: 400;
 }
 
-@media (max-width: 768px) {
-  .data-table :deep(.v-data-table-footer) {
-    grid-template-columns: 1fr;
-    row-gap: 8px;
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
+/* .table-pagination :deep(.v-pagination__item--is-active .v-btn) {
+  font-weight: 700;
+} */
 
-  .data-table :deep(.v-data-table-footer__items-per-page),
-  .data-table :deep(.v-data-table-footer__pagination),
-  .data-table :deep(.v-data-table-footer__info) {
-    grid-column: 1;
-    justify-self: center;
-  }
-
-  .data-table-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .toolbar-right {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .search-field {
-    width: 100%;
-  }
-}
 </style>
