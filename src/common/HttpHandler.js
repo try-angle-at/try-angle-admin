@@ -260,7 +260,7 @@ export async function ping() {
 
 // ----- 인증 관련 API ----- //
 export async function signup(params = {}) {
-  return request('POST', '/api/auth/signup', {
+  return request('POST', '/auth/signup', {
     body: compact({
       name: params.name,
       nickname: params.nickname,
@@ -281,7 +281,7 @@ export async function signup(params = {}) {
 }
 
 export async function login(params = {}) {
-  return request('POST', '/api/auth/login', {
+  return request('POST', '/auth/login', {
     body: compact({
       email: params.email,
       password: params.password,
@@ -290,7 +290,7 @@ export async function login(params = {}) {
 }
 
 export async function loginWithForm(params = {}) {
-  return request('POST', '/api/auth/token', {
+  return request('POST', '/auth/token', {
     body: compact({
       username: params.username ?? params.email,
       password: params.password,
@@ -300,11 +300,11 @@ export async function loginWithForm(params = {}) {
 }
 
 export async function getMe() {
-  return request('GET', '/api/auth/me');
+  return request('GET', '/auth/me');
 }
 
 export async function checkExists(params = {}) {
-  return request('POST', '/api/auth/exists', {
+  return request('POST', '/auth/exists', {
     body: compact({
       id: params.id,
     }),
@@ -312,7 +312,7 @@ export async function checkExists(params = {}) {
 }
 
 export async function checkEmail(params = {}) {
-  return request('POST', '/api/auth/checkEmail', {
+  return request('POST', '/auth/checkEmail', {
     body: compact({
       email: params.email,
     }),
@@ -320,11 +320,11 @@ export async function checkEmail(params = {}) {
 }
 
 export async function logout() {
-  return request('POST', '/api/auth/logout');
+  return request('POST', '/auth/logout');
 }
 
 export async function updateMe(params = {}) {
-  return request('POST', '/api/auth/update', {
+  return request('POST', '/auth/update', {
     body: compact({
       nickname: params.nickname,
       phone: params.phone,
@@ -353,15 +353,15 @@ export async function uploadFile(params = {}) {
 
   if (metadata !== null) body.append('metadata', metadata);
 
-  return request('POST', '/api/files/create', { body, isFormData: true });
+  return request('POST', '/files/create', { body, isFormData: true });
 }
 
 export async function listAllFiles() {
-  return request('POST', '/api/files/list');
+  return request('POST', '/files/list');
 }
 
 export async function getFileMeta(params = {}) {
-  return request('POST', '/api/files/get', {
+  return request('POST', '/files/get', {
     body: compact({
       fileId: params.fileId,
     }),
@@ -369,7 +369,7 @@ export async function getFileMeta(params = {}) {
 }
 
 export async function getPresignedUrl(params = {}) {
-  return request('POST', '/api/files/getPresigned', {
+  return request('POST', '/files/getPresigned', {
     body: compact({
       fileId: params.fileId,
     }),
@@ -377,7 +377,7 @@ export async function getPresignedUrl(params = {}) {
 }
 
 export async function deleteFile(params = {}) {
-  return request('POST', '/api/files/delete', {
+  return request('POST', '/files/delete', {
     body: compact({
       fileId: params.fileId,
     }),
@@ -386,7 +386,7 @@ export async function deleteFile(params = {}) {
 
 // ----- 레퍼런스 관련 API ----- //
 export async function listReferences(params = {}) {
-  return request('POST', '/api/ref/list', {
+  return request('POST', '/ref/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
@@ -396,7 +396,7 @@ export async function listReferences(params = {}) {
 }
 
 export async function getReference(params = {}) {
-  return request('POST', '/api/ref/get', {
+  return request('POST', '/ref/get', {
     body: compact({
       id: params.id ?? params.refId,
     }),
@@ -404,7 +404,7 @@ export async function getReference(params = {}) {
 }
 
 export async function createReference(params = {}) {
-  return request('POST', '/api/ref/create', {
+  return request('POST', '/ref/create', {
     body: compact({
       ctgId: params.ctgId,
       imgUrl: params.imgUrl,
@@ -419,7 +419,7 @@ export async function createReference(params = {}) {
 }
 
 export async function updateReference(params = {}) {
-  return request('POST', '/api/ref/update', {
+  return request('POST', '/ref/update', {
     body: compact({
       id: params.id ?? params.refId,
       title: params.title,
@@ -435,7 +435,7 @@ export async function updateReference(params = {}) {
 }
 
 export async function deleteReference(params = {}) {
-  return request('POST', '/api/ref/delete', {
+  return request('POST', '/ref/delete', {
     body: compact({
       id: params.id ?? params.refId,
     }),
@@ -444,7 +444,7 @@ export async function deleteReference(params = {}) {
 
 // ----- 태그 관련 API ----- //
 export async function listTags(params = {}) {
-  return request('POST', '/api/tag/list', {
+  return request('POST', '/tag/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
@@ -454,7 +454,7 @@ export async function listTags(params = {}) {
 }
 
 export async function getTag(params = {}) {
-  return request('POST', '/api/tag/get', {
+  return request('POST', '/tag/get', {
     body: compact({
       id: params.id ?? params.tagId,
     }),
@@ -462,7 +462,7 @@ export async function getTag(params = {}) {
 }
 
 export async function createTag(params = {}) {
-  return request('POST', '/api/tag/create', {
+  return request('POST', '/tag/create', {
     body: compact({
       userId: params.userId,
       parentCode: params.parentCode,
@@ -473,7 +473,7 @@ export async function createTag(params = {}) {
 }
 
 export async function updateTag(params = {}) {
-  return request('POST', '/api/tag/update', {
+  return request('POST', '/tag/update', {
     body: compact({
       id: params.id ?? params.tagId,
       parentCode: params.parentCode,
@@ -483,7 +483,7 @@ export async function updateTag(params = {}) {
 }
 
 export async function deleteTag(params = {}) {
-  return request('POST', '/api/tag/delete', {
+  return request('POST', '/tag/delete', {
     body: compact({
       id: params.id ?? params.tagId,
     }),
@@ -492,7 +492,7 @@ export async function deleteTag(params = {}) {
 
 // ----- 카테고리 관련 API ----- //
 export async function listCategories(params = {}) {
-  return request('POST', '/api/ctg/list', {
+  return request('POST', '/ctg/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
@@ -501,7 +501,7 @@ export async function listCategories(params = {}) {
 }
 
 export async function getCategory(params = {}) {
-  return request('POST', '/api/ctg/get', {
+  return request('POST', '/ctg/get', {
     body: compact({
       id: params.id ?? params.ctgId,
     }),
@@ -509,7 +509,7 @@ export async function getCategory(params = {}) {
 }
 
 export async function createCategory(params = {}) {
-  return request('POST', '/api/ctg/create', {
+  return request('POST', '/ctg/create', {
     body: compact({
       userId: params.userId,
       name: params.name,
@@ -518,7 +518,7 @@ export async function createCategory(params = {}) {
 }
 
 export async function updateCategory(params = {}) {
-  return request('POST', '/api/ctg/update', {
+  return request('POST', '/ctg/update', {
     body: compact({
       id: params.id ?? params.ctgId,
       name: params.name,
@@ -527,7 +527,7 @@ export async function updateCategory(params = {}) {
 }
 
 export async function deleteCategory(params = {}) {
-  return request('POST', '/api/ctg/delete', {
+  return request('POST', '/ctg/delete', {
     body: compact({
       id: params.id ?? params.ctgId,
     }),
@@ -536,7 +536,7 @@ export async function deleteCategory(params = {}) {
 
 // ----- 상품 관련 API ----- //
 export async function listProducts(params = {}) {
-  return request('POST', '/api/prod/list', {
+  return request('POST', '/prod/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
@@ -546,7 +546,7 @@ export async function listProducts(params = {}) {
 }
 
 export async function getProduct(params = {}) {
-  return request('POST', '/api/prod/get', {
+  return request('POST', '/prod/get', {
     body: compact({
       id: params.id ?? params.prodId,
     }),
@@ -554,7 +554,7 @@ export async function getProduct(params = {}) {
 }
 
 export async function createProduct(params = {}) {
-  return request('POST', '/api/prod/create', {
+  return request('POST', '/prod/create', {
     body: compact({
       name: params.name,
       brand: params.brand,
@@ -566,7 +566,7 @@ export async function createProduct(params = {}) {
 }
 
 export async function updateProduct(params = {}) {
-  return request('POST', '/api/prod/update', {
+  return request('POST', '/prod/update', {
     body: compact({
       id: params.id ?? params.prodId,
       name: params.name,
@@ -579,7 +579,7 @@ export async function updateProduct(params = {}) {
 }
 
 export async function deleteProduct(params = {}) {
-  return request('POST', '/api/prod/delete', {
+  return request('POST', '/prod/delete', {
     body: compact({
       id: params.id ?? params.prodId,
     }),
@@ -588,7 +588,7 @@ export async function deleteProduct(params = {}) {
 
 // ----- 세션 관련 API ----- //
 export async function startSession(params = {}) {
-  return request('POST', '/api/session/start', {
+  return request('POST', '/session/start', {
     body: compact({
       imgId: params.imgId,
       device: params.device,
@@ -597,7 +597,7 @@ export async function startSession(params = {}) {
 }
 
 export async function endSession(params = {}) {
-  return request('POST', '/api/session/end', {
+  return request('POST', '/session/end', {
     body: compact({
       id: params.id ?? params.sessionId,
     }),
@@ -606,7 +606,7 @@ export async function endSession(params = {}) {
 
 // ----- 스냅 관련 API ----- //
 export async function listSnaps(params = {}) {
-  return request('POST', '/api/snap/list', {
+  return request('POST', '/snap/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
@@ -622,7 +622,7 @@ export async function listSnaps(params = {}) {
 }
 
 export async function getSnap(params = {}) {
-  return request('POST', '/api/snap/get', {
+  return request('POST', '/snap/get', {
     body: compact({
       id: params.id ?? params.snapId,
     }),
@@ -630,7 +630,7 @@ export async function getSnap(params = {}) {
 }
 
 export async function createSnap(params = {}) {
-  return request('POST', '/api/snap/create', {
+  return request('POST', '/snap/create', {
     body: compact({
       prodId: params.prodId,
       imgId: params.imgId,
@@ -645,7 +645,7 @@ export async function createSnap(params = {}) {
 }
 
 export async function updateSnap(params = {}) {
-  return request('POST', '/api/snap/update', {
+  return request('POST', '/snap/update', {
     body: compact({
       id: params.id ?? params.snapId,
       comment: params.comment,
@@ -656,7 +656,7 @@ export async function updateSnap(params = {}) {
 }
 
 export async function deleteSnap(params = {}) {
-  return request('POST', '/api/snap/delete', {
+  return request('POST', '/snap/delete', {
     body: compact({
       id: params.id ?? params.snapId,
     }),
@@ -665,7 +665,7 @@ export async function deleteSnap(params = {}) {
 
 // ----- 북마크 관련 API ----- //
 export async function toggleBookmark(params = {}) {
-  return request('POST', '/api/bmk/toggle', {
+  return request('POST', '/bmk/toggle', {
     body: compact({
       imgId: params.imgId,
     }),
@@ -673,7 +673,7 @@ export async function toggleBookmark(params = {}) {
 }
 
 export async function listBookmarks(params = {}) {
-  return request('POST', '/api/bmk/list', {
+  return request('POST', '/bmk/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
@@ -683,7 +683,7 @@ export async function listBookmarks(params = {}) {
 
 // ----- 시스템 관련 API ----- //
 export async function testSystemSimulation(params = {}) {
-  return request('POST', '/api/system/test', {
+  return request('POST', '/system/test', {
     body: compact({
       level: params.level,
       service: params.service,
@@ -693,7 +693,7 @@ export async function testSystemSimulation(params = {}) {
 }
 
 export async function sendSnapshotBatch(params = {}) {
-  return request('POST', '/api/system/send', {
+  return request('POST', '/system/send', {
     body: compact({
       sId: params.sId ?? params.sessionId,
       secSeq: params.secSeq,
@@ -703,7 +703,7 @@ export async function sendSnapshotBatch(params = {}) {
 }
 
 export async function flushSnapshotSec(params = {}) {
-  return request('POST', '/api/system/flushSec', {
+  return request('POST', '/system/flushSec', {
     body: compact({
       sId: params.sId ?? params.sessionId,
       secSeq: params.secSeq,
@@ -712,7 +712,7 @@ export async function flushSnapshotSec(params = {}) {
 }
 
 export async function flushSnapshotSession(params = {}) {
-  return request('POST', '/api/system/flushSession', {
+  return request('POST', '/system/flushSession', {
     body: compact({
       sId: params.sId ?? params.sessionId,
     }),
