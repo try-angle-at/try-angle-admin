@@ -190,7 +190,8 @@ async function handleLogin() {
       password: userPassword.value,
     });
 
-    const accessToken = response?.accessToken;
+    const payload = response?.data ?? response;
+    const accessToken = payload?.accessToken;
 
     if (!accessToken) {
       throw new Error('로그인 응답에 accessToken이 없습니다. 서버 응답 형식을 확인해주세요.');
@@ -199,7 +200,7 @@ async function handleLogin() {
     httpClient.setAuthToken(accessToken);
     localStorage.setItem('accessToken', accessToken);
 
-    let user = response?.user ?? response?.data ?? null;
+    let user = payload?.user ?? response?.user ?? null;
 
     if (!user) {
       try {
