@@ -57,6 +57,26 @@
             @update:itemsPerPage="handleItemsPerPageChange"
             @rowClick="handleRowClick"
         > 
+
+          <template #item.thumbUrl="{ item }">
+            <v-img
+              v-if="(item?.raw ?? item)?.thumbUrl"
+              :src="(item?.raw ?? item)?.thumbUrl"
+              width="64"
+              height="64"
+              cover
+              class="thumb-img"
+            />
+            <span v-else>-</span>
+          </template>
+
+          <template #item.pStat="{ item }">
+            <span
+              v-if="(item?.raw ?? item)?.pStat && (item?.raw ?? item)?.pStat !== '-'"
+              class="status-tag"
+            >{{ (item?.raw ?? item)?.pStat }}</span>
+            <span v-else>-</span>
+          </template>
         
           <template #item.action="{ item }">
             <v-btn
@@ -89,6 +109,7 @@ const emit = defineEmits([
 ]);
 const router = useRouter(); 
 const util = Util.getInstance();
+const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, '');
 
 const search = ref({
   keyword: '',
@@ -126,7 +147,7 @@ const tableItems = ref([]);
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
-  fetchProducts();
+  fetchListProducts();
 });
 
 // ----- 함수 정의 ----- //
@@ -140,7 +161,25 @@ function getStatusLabel(value) {
   return '-';
 }
 
-async function fetchProducts() {
+function buildThumbnailUrl(path) {
+  if (!path) {
+    return null;
+  }
+
+  const normalizedPath = String(path).trim();
+  if (!normalizedPath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+
+  const relativePath = normalizedPath.replace(/^\/+/, '');
+  return imageBaseUrl ? `${imageBaseUrl}/${relativePath}` : `/${relativePath}`;
+}
+
+async function fetchListProducts() {
   isLoading.value = true;
 
   try {
@@ -159,7 +198,7 @@ async function fetchProducts() {
       name: product.name,
       brand: product.brand,
       price: typeof product.price === 'number' ? product.price.toLocaleString() : product.price,
-      thumbUrl: product.thumbUrl ?? '-',
+      thumbUrl: buildThumbnailUrl(product.thumbUrl),
       pStat: getStatusLabel(product.pStat),
       cDate: util.formatUnixDate(product.cDate),
       uDate: util.formatUnixDate(product.uDate),
@@ -191,12 +230,11 @@ function handleClickBtn(action, value) {
       search.value.keyword = '';
       search.value.status = null;
       pageNation.value.current = 1;
-      fetchProducts();
       break;
 
     case 'search':
       pageNation.value.current = 1;
-      fetchProducts();
+      fetchListProducts();
       break;
 
     case 'goToCreate':
@@ -222,13 +260,13 @@ function handleRowClick({ item }) {
 
 function handlePageChange(nextPage) {
   pageNation.value.current = nextPage;
-  fetchProducts();
+  fetchListProducts();
 }
 
 function handleItemsPerPageChange(limit) {
   pageNation.value.limit = limit;
   pageNation.value.current = 1;
-  fetchProducts();
+  fetchListProducts();
 }
 </script> 
 
@@ -286,9 +324,34 @@ function handleItemsPerPageChange(limit) {
 }
 
 .detail-btn {
-  min-width: 72px;
-  border-color: #D1D5DB;
-  color: #374151;
+    padding: 4px 8px;
+    align-items: center;
+    border-radius: 8px;
+    border: 0.7px solid #4A5565;
+    color: #4A5565;
+    letter-spacing: -0.15px;
+    font-family: Pretendard;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.thumb-img {
+    border-radius: 8px; 
+    border: 0.7px solid #E5E7EB;
+    background-color: #F9FAFB;
+    margin: 4px;
+}
+
+.status-tag {
+  display: flex;
+  padding: 4px 8px;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  border-radius: 100px;
+  background: #E6F0FF;
+  color: #2B7FFF;
+  font-family: Pretendard;
   font-size: 12px;
   font-weight: 500;
 }
