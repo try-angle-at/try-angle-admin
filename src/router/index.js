@@ -81,29 +81,9 @@ const routes = [
     component: () => import(/* webpackChunkName: "tag-list" */ "@/pages/Tag/TagList.vue")
   },
   {
-    path: '/tag/create',
-    name: 'TagForm',
-    component: () => import(/* webpackChunkName: "tag-form" */ "@/pages/Tag/TagForm.vue")
-  },
-  {
-    path: '/tag/:id',
-    name: 'TagDetail',
-    component: () => import(/* webpackChunkName: "tag-detail" */ "@/pages/Tag/TagDetail.vue")
-  },
-  {
     path: '/category',
     name: 'CategoryList',
     component: () => import(/* webpackChunkName: "category-list" */ "@/pages/Category/CategoryList.vue")
-  },
-  {
-    path: '/category/create',
-    name: 'CategoryForm',
-    component: () => import(/* webpackChunkName: "category-form" */ "@/pages/Category/CategoryForm.vue")
-  },
-  {
-    path: '/category/:id',
-    name: 'CategoryDetail',
-    component: () => import(/* webpackChunkName: "category-detail" */ "@/pages/Category/CategoryDetail.vue")
   },
 ];
 
