@@ -34,6 +34,47 @@ class HttpClient {
   }
 
   /**
+   * 디버그 로그용 요청 바디 직렬화
+   * @param {any} body - 요청 바디
+   * @returns {any}
+   */
+  serializeBodyForLog(body) {
+    if (!body) return '';
+
+    if (body instanceof FormData) {
+      return Array.from(body.entries()).map(([key, value]) => [
+        key,
+        value instanceof File ? value.name : value,
+      ]);
+    }
+
+    if (body instanceof URLSearchParams) {
+      return Object.fromEntries(body.entries());
+    }
+
+    if (typeof body === 'string') {
+      try {
+        return JSON.parse(body);
+      } catch {
+        return body;
+      }
+    }
+
+    return body;
+  }
+
+  /**
+   * null/undefined를 제거한 객체 반환
+   * @param {object} source - 원본 객체
+   * @returns {object}
+   */
+  compactObject(source = {}) {
+    return Object.fromEntries(
+      Object.entries(source).filter(([, value]) => value !== undefined && value !== null)
+    );
+  }
+
+  /**
    * 공통 fetch 요청 메서드
    * @param {string} endpoint - API 엔드포인트
    * @param {object} options - fetch 옵션
@@ -56,7 +97,7 @@ class HttpClient {
     config.signal = controller.signal;
 
     try {
-      console.log(`[HTTP] ${config.method || 'GET'} ${url}`, config.body ? JSON.parse(config.body) : '');
+      console.log(`[HTTP] ${config.method || 'GET'} ${url}`, this.serializeBodyForLog(config.body));
       
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
@@ -127,15 +168,20 @@ class HttpClient {
    * @param {object} options.body - 요청 본문
    * @param {object} options.params - 쿼리 파라미터
    * @param {boolean} options.isFormData - FormData 여부
+   * @param {boolean} options.isUrlEncoded - x-www-form-urlencoded 여부
+   * @param {object} options.headers - 추가 헤더
    * @returns {Promise<any>} - 응답 데이터
    */
-  async apiRequest(method, endpoint, { body = null, params = null, isFormData = false } = {}) {
+  async apiRequest(method, endpoint, { body = null, params = null, isFormData = false, isUrlEncoded = false, headers = null } = {}) {
     let url = endpoint;
     
     // 쿼리 파라미터 처리
     if (params) {
-      const queryString = new URLSearchParams(params).toString();
-      url = `${endpoint}?${queryString}`;
+      const compactParams = this.compactObject(params);
+      const queryString = new URLSearchParams(compactParams).toString();
+      if (queryString) {
+        url = `${endpoint}?${queryString}`;
+      }
     }
 
     const options = {
@@ -148,10 +194,23 @@ class HttpClient {
       delete headers['Content-Type'];
       options.headers = headers;
       options.body = body;
-    } 
+    }
+    // URL Encoded 처리
+    else if (isUrlEncoded && body) {
+      options.headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...headers,
+      };
+      options.body = new URLSearchParams(this.compactObject(body));
+    }
     // 일반 JSON 데이터 처리
     else if (body) {
-      options.body = JSON.stringify(body);
+      options.body = JSON.stringify(this.compactObject(body));
+      if (headers) {
+        options.headers = headers;
+      }
+    } else if (headers) {
+      options.headers = headers;
     }
 
     return this.request(url, options);
@@ -165,190 +224,478 @@ export default httpClient;
 
 // ==================== API 함수 정의 ==================== //
 
-// ----- 인증 관련 API ----- //
-export async function login(params) {
-  const email = params.email;
-  const password = params.password;
-  const body = {
-    email,
-    password
-  };
-  return httpClient.apiRequest('POST', '/api/auth/login', { body });
+function request(method, endpoint, options) {
+  return httpClient.apiRequest(method, endpoint, options);
 }
 
-export async function signup(params) {
-  const email = params.email;
-  const password = params.password;
-  const userName = params.userName;
-  const major = params.major;
-  const grade = params.grade;
-  const body = {
-    email,
-    password,
-    user_name: userName,
-    major,
-    grade
-  };
-  return httpClient.apiRequest('POST', '/api/auth/signup', { body });
+function compact(body = {}) {
+  return httpClient.compactObject(body);
+}
+
+// ----- Basic API ----- //
+export async function ping() {
+  return request('GET', '/ping');
+}
+
+// ----- 인증 관련 API ----- //
+export async function signup(params = {}) {
+  return request('POST', '/api/auth/signup', {
+    body: compact({
+      name: params.name,
+      nickname: params.nickname,
+      email: params.email,
+      phone: params.phone,
+      emailConf: params.emailConf,
+      desc: params.desc,
+      fileId: params.fileId,
+      extra: params.extra,
+      provider: params.provider,
+      providerId: params.providerId,
+      role: params.role,
+      password: params.password,
+      passwordCheck: params.passwordCheck,
+      agreeTerms: params.agreeTerms,
+    }),
+  });
+}
+
+export async function login(params = {}) {
+  return request('POST', '/api/auth/login', {
+    body: compact({
+      email: params.email,
+      password: params.password,
+    }),
+  });
+}
+
+export async function loginWithForm(params = {}) {
+  return request('POST', '/api/auth/token', {
+    body: compact({
+      username: params.username ?? params.email,
+      password: params.password,
+    }),
+    isUrlEncoded: true,
+  });
+}
+
+export async function getMe() {
+  return request('GET', '/api/auth/me');
+}
+
+export async function checkExists(params = {}) {
+  return request('POST', '/api/auth/exists', {
+    body: compact({
+      id: params.id,
+    }),
+  });
+}
+
+export async function checkEmail(params = {}) {
+  return request('POST', '/api/auth/checkEmail', {
+    body: compact({
+      email: params.email,
+    }),
+  });
 }
 
 export async function logout() {
-  return httpClient.apiRequest('POST', '/api/auth/logout');
+  return request('POST', '/api/auth/logout');
 }
 
-export async function refreshToken(params) {
-  const refreshToken = params.refreshToken;
-  const body = {
-    refresh_token: refreshToken
-  };
-  return httpClient.apiRequest('POST', '/api/auth/refresh', { body });
+export async function updateMe(params = {}) {
+  return request('POST', '/api/auth/update', {
+    body: compact({
+      nickname: params.nickname,
+      phone: params.phone,
+      desc: params.desc,
+      fileId: params.fileId,
+      extra: params.extra,
+      password: params.password,
+      passwordNew: params.passwordNew,
+      passwordNewCheck: params.passwordNewCheck,
+    }),
+  });
 }
 
-// ----- 프로필 관련 API ----- //
-export async function getMyProfile() {
-  return httpClient.apiRequest('GET', '/api/profile/me');
-}
-
-export async function getUserProfile(params) {
-  const userId = params.userId;
-  return httpClient.apiRequest('GET', `/api/profile/${userId}`);
-}
-
-export async function updateProfile(params) {
-  const major = params.major;
-  const grade = params.grade;
-  const introText = params.introText;
-  const profileImageUrl = params.profileImageUrl;
-  const body = {
-    major,
-    grade,
-    intro_text: introText
-  };
-  if (profileImageUrl) body.profile_image_url = profileImageUrl;
-  return httpClient.apiRequest('PUT', '/api/profile/me', { body });
-}
-
-export async function uploadProfileImage(params) {
-  const imageFile = params.imageFile;
+// ----- 파일 관련 API ----- //
+export async function uploadFile(params = {}) {
   const body = new FormData();
-  body.append('file', imageFile);
-  return httpClient.apiRequest('POST', '/api/profile/image', { body, isFormData: true });
+
+  if (params.file) body.append('file', params.file);
+  if (params.type !== undefined && params.type !== null) body.append('type', params.type);
+
+  const metadata = typeof params.metadata === 'string'
+    ? params.metadata
+    : params.metadata !== undefined && params.metadata !== null
+      ? JSON.stringify(params.metadata)
+      : null;
+
+  if (metadata !== null) body.append('metadata', metadata);
+
+  return request('POST', '/api/files/create', { body, isFormData: true });
 }
 
-// ----- 모임 관련 API ----- //
-export async function getMeetings(params) {
-  const query = params;
-  return httpClient.apiRequest('GET', '/api/meetings', { params: query });
+export async function listAllFiles() {
+  return request('POST', '/api/files/list');
 }
 
-export async function getMeeting(params) {
-  const meetingId = params.meetingId;
-  return httpClient.apiRequest('GET', `/api/meetings/${meetingId}`);
+export async function getFileMeta(params = {}) {
+  return request('POST', '/api/files/get', {
+    body: compact({
+      fileId: params.fileId,
+    }),
+  });
 }
 
-export async function createMeeting(params) {
-  const title = params.title;
-  const description = params.description;
-  const maxParticipants = params.maxParticipants;
-  const meetingTime = params.meetingTime;
-  const category = params.category;
-  const body = {
-    title,
-    description,
-    max_participants: maxParticipants,
-    meeting_time: meetingTime,
-    category
-  };
-  return httpClient.apiRequest('POST', '/api/meetings', { body });
+export async function getPresignedUrl(params = {}) {
+  return request('POST', '/api/files/getPresigned', {
+    body: compact({
+      fileId: params.fileId,
+    }),
+  });
 }
 
-export async function updateMeeting(params) {
-  const meetingId = params.meetingId;
-  const title = params.title;
-  const description = params.description;
-  const maxParticipants = params.maxParticipants;
-  const meetingTime = params.meetingTime;
-  const category = params.category;
-  const body = {
-    title,
-    description,
-    max_participants: maxParticipants,
-    meeting_time: meetingTime,
-    category
-  };
-  return httpClient.apiRequest('PUT', `/api/meetings/${meetingId}`, { body });
+export async function deleteFile(params = {}) {
+  return request('POST', '/api/files/delete', {
+    body: compact({
+      fileId: params.fileId,
+    }),
+  });
 }
 
-export async function deleteMeeting(params) {
-  const meetingId = params.meetingId;
-  return httpClient.apiRequest('DELETE', `/api/meetings/${meetingId}`);
+// ----- 레퍼런스 관련 API ----- //
+export async function listReferences(params = {}) {
+  return request('POST', '/api/ref/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+      ctgId: params.ctgId,
+    }),
+  });
 }
 
-export async function joinMeeting(params) {
-  const meetingId = params.meetingId;
-  return httpClient.apiRequest('POST', `/api/meetings/${meetingId}/join`);
+export async function getReference(params = {}) {
+  return request('POST', '/api/ref/get', {
+    body: compact({
+      id: params.id ?? params.refId,
+    }),
+  });
 }
 
-export async function leaveMeeting(params) {
-  const meetingId = params.meetingId;
-  return httpClient.apiRequest('POST', `/api/meetings/${meetingId}/leave`);
+export async function createReference(params = {}) {
+  return request('POST', '/api/ref/create', {
+    body: compact({
+      ctgId: params.ctgId,
+      imgUrl: params.imgUrl,
+      title: params.title,
+      desc: params.desc,
+      kwd: params.kwd,
+      aiDoc: params.aiDoc,
+      expWeight: params.expWeight,
+      pri: params.pri,
+    }),
+  });
 }
 
-// ----- 신청 관련 API ----- //
-export async function getMyApplications(params) {
-  const query = params;
-  return httpClient.apiRequest('GET', '/api/applications/me', { params: query });
+export async function updateReference(params = {}) {
+  return request('POST', '/api/ref/update', {
+    body: compact({
+      id: params.id ?? params.refId,
+      title: params.title,
+      desc: params.desc,
+      ctgId: params.ctgId,
+      imgUrl: params.imgUrl,
+      kwd: params.kwd,
+      aiDoc: params.aiDoc,
+      expWeight: params.expWeight,
+      pri: params.pri,
+    }),
+  });
 }
 
-export async function getApplicationsByMeeting(params) {
-  const meetingId = params.meetingId;
-  return httpClient.apiRequest('GET', `/api/applications/meeting/${meetingId}`);
+export async function deleteReference(params = {}) {
+  return request('POST', '/api/ref/delete', {
+    body: compact({
+      id: params.id ?? params.refId,
+    }),
+  });
 }
 
-export async function approveApplication(params) {
-  const applicationId = params.applicationId;
-  return httpClient.apiRequest('POST', `/api/applications/${applicationId}/approve`);
+// ----- 태그 관련 API ----- //
+export async function listTags(params = {}) {
+  return request('POST', '/api/tag/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+      parentCode: params.parentCode,
+    }),
+  });
 }
 
-export async function rejectApplication(params) {
-  const applicationId = params.applicationId;
-  return httpClient.apiRequest('POST', `/api/applications/${applicationId}/reject`);
+export async function getTag(params = {}) {
+  return request('POST', '/api/tag/get', {
+    body: compact({
+      id: params.id ?? params.tagId,
+    }),
+  });
 }
 
-// ----- 리뷰 관련 API ----- //
-export async function getReviews(params) {
-  const query = params;
-  return httpClient.apiRequest('GET', '/api/reviews', { params: query });
+export async function createTag(params = {}) {
+  return request('POST', '/api/tag/create', {
+    body: compact({
+      userId: params.userId,
+      parentCode: params.parentCode,
+      code: params.code,
+      tagName: params.tagName,
+    }),
+  });
 }
 
-export async function createReview(params) {
-  const meetingId = params.meetingId;
-  const targetUserId = params.targetUserId;
-  const rating = params.rating;
-  const comment = params.comment;
-  const body = {
-    meeting_id: meetingId,
-    target_user_id: targetUserId,
-    rating,
-    comment
-  };
-  return httpClient.apiRequest('POST', '/api/reviews', { body });
+export async function updateTag(params = {}) {
+  return request('POST', '/api/tag/update', {
+    body: compact({
+      id: params.id ?? params.tagId,
+      parentCode: params.parentCode,
+      tagName: params.tagName,
+    }),
+  });
 }
 
-export async function updateReview(params) {
-  const reviewId = params.reviewId;
-  const rating = params.rating;
-  const comment = params.comment;
-  const body = {
-    rating,
-    comment
-  };
-  return httpClient.apiRequest('PUT', `/api/reviews/${reviewId}`, { body });
+export async function deleteTag(params = {}) {
+  return request('POST', '/api/tag/delete', {
+    body: compact({
+      id: params.id ?? params.tagId,
+    }),
+  });
 }
 
-export async function deleteReview(params) {
-  const reviewId = params.reviewId;
-  return httpClient.apiRequest('DELETE', `/api/reviews/${reviewId}`);
+// ----- 카테고리 관련 API ----- //
+export async function listCategories(params = {}) {
+  return request('POST', '/api/ctg/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+    }),
+  });
+}
+
+export async function getCategory(params = {}) {
+  return request('POST', '/api/ctg/get', {
+    body: compact({
+      id: params.id ?? params.ctgId,
+    }),
+  });
+}
+
+export async function createCategory(params = {}) {
+  return request('POST', '/api/ctg/create', {
+    body: compact({
+      userId: params.userId,
+      name: params.name,
+    }),
+  });
+}
+
+export async function updateCategory(params = {}) {
+  return request('POST', '/api/ctg/update', {
+    body: compact({
+      id: params.id ?? params.ctgId,
+      name: params.name,
+    }),
+  });
+}
+
+export async function deleteCategory(params = {}) {
+  return request('POST', '/api/ctg/delete', {
+    body: compact({
+      id: params.id ?? params.ctgId,
+    }),
+  });
+}
+
+// ----- 상품 관련 API ----- //
+export async function listProducts(params = {}) {
+  return request('POST', '/api/prod/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+      pStat: params.pStat,
+    }),
+  });
+}
+
+export async function getProduct(params = {}) {
+  return request('POST', '/api/prod/get', {
+    body: compact({
+      id: params.id ?? params.prodId,
+    }),
+  });
+}
+
+export async function createProduct(params = {}) {
+  return request('POST', '/api/prod/create', {
+    body: compact({
+      name: params.name,
+      brand: params.brand,
+      price: params.price,
+      thumbUrl: params.thumbUrl,
+      pStat: params.pStat,
+    }),
+  });
+}
+
+export async function updateProduct(params = {}) {
+  return request('POST', '/api/prod/update', {
+    body: compact({
+      id: params.id ?? params.prodId,
+      name: params.name,
+      brand: params.brand,
+      price: params.price,
+      thumbUrl: params.thumbUrl,
+      pStat: params.pStat,
+    }),
+  });
+}
+
+export async function deleteProduct(params = {}) {
+  return request('POST', '/api/prod/delete', {
+    body: compact({
+      id: params.id ?? params.prodId,
+    }),
+  });
+}
+
+// ----- 세션 관련 API ----- //
+export async function startSession(params = {}) {
+  return request('POST', '/api/session/start', {
+    body: compact({
+      imgId: params.imgId,
+      device: params.device,
+    }),
+  });
+}
+
+export async function endSession(params = {}) {
+  return request('POST', '/api/session/end', {
+    body: compact({
+      id: params.id ?? params.sessionId,
+    }),
+  });
+}
+
+// ----- 스냅 관련 API ----- //
+export async function listSnaps(params = {}) {
+  return request('POST', '/api/snap/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+      userId: params.userId,
+      prodId: params.prodId,
+      imgId: params.imgId,
+      fromDate: params.fromDate,
+      toDate: params.toDate,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    }),
+  });
+}
+
+export async function getSnap(params = {}) {
+  return request('POST', '/api/snap/get', {
+    body: compact({
+      id: params.id ?? params.snapId,
+    }),
+  });
+}
+
+export async function createSnap(params = {}) {
+  return request('POST', '/api/snap/create', {
+    body: compact({
+      prodId: params.prodId,
+      imgId: params.imgId,
+      sId: params.sId ?? params.sessionId,
+      snapUrl: params.snapUrl,
+      comment: params.comment,
+      gender: params.gender,
+      userH: params.userH,
+      userW: params.userW,
+    }),
+  });
+}
+
+export async function updateSnap(params = {}) {
+  return request('POST', '/api/snap/update', {
+    body: compact({
+      id: params.id ?? params.snapId,
+      comment: params.comment,
+      viewCnt: params.viewCnt,
+      gender: params.gender,
+    }),
+  });
+}
+
+export async function deleteSnap(params = {}) {
+  return request('POST', '/api/snap/delete', {
+    body: compact({
+      id: params.id ?? params.snapId,
+    }),
+  });
+}
+
+// ----- 북마크 관련 API ----- //
+export async function toggleBookmark(params = {}) {
+  return request('POST', '/api/bmk/toggle', {
+    body: compact({
+      imgId: params.imgId,
+    }),
+  });
+}
+
+export async function listBookmarks(params = {}) {
+  return request('POST', '/api/bmk/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+    }),
+  });
+}
+
+// ----- 시스템 관련 API ----- //
+export async function testSystemSimulation(params = {}) {
+  return request('POST', '/api/system/test', {
+    body: compact({
+      level: params.level,
+      service: params.service,
+      duration: params.duration,
+    }),
+  });
+}
+
+export async function sendSnapshotBatch(params = {}) {
+  return request('POST', '/api/system/send', {
+    body: compact({
+      sId: params.sId ?? params.sessionId,
+      secSeq: params.secSeq,
+      payload: params.payload,
+    }),
+  });
+}
+
+export async function flushSnapshotSec(params = {}) {
+  return request('POST', '/api/system/flushSec', {
+    body: compact({
+      sId: params.sId ?? params.sessionId,
+      secSeq: params.secSeq,
+    }),
+  });
+}
+
+export async function flushSnapshotSession(params = {}) {
+  return request('POST', '/api/system/flushSession', {
+    body: compact({
+      sId: params.sId ?? params.sessionId,
+    }),
+  });
 }
 
 // 사용 예시:
