@@ -57,6 +57,7 @@
             @update:itemsPerPage="handleItemsPerPageChange"
             @rowClick="handleRowClick"
         > 
+        
           <template #item.action="{ item }">
             <v-btn
               class="detail-btn"
@@ -65,7 +66,9 @@
               @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
             >상세보기</v-btn>
           </template>
+
         </data-table>
+
     </v-container>
 </template>
 
@@ -75,6 +78,7 @@
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
+import Util from '@/common/Util.js';
 
 import DataTable from '@/components/DataTable.vue';
 
@@ -84,6 +88,7 @@ const emit = defineEmits([
   'show-right-btn',
 ]);
 const router = useRouter(); 
+const util = Util.getInstance();
 
 const search = ref({
   keyword: '',
@@ -156,8 +161,8 @@ async function fetchProducts() {
       price: typeof product.price === 'number' ? product.price.toLocaleString() : product.price,
       thumbUrl: product.thumbUrl ?? '-',
       pStat: getStatusLabel(product.pStat),
-      cDate: product.cDate,
-      uDate: product.uDate,
+      cDate: util.formatUnixDate(product.cDate),
+      uDate: util.formatUnixDate(product.uDate),
       action: '상세보기',
     }));
 
