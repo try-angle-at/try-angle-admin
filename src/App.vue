@@ -152,6 +152,16 @@ const pageList = ref([
         name: '실시간 로그 데이터 목록',
         path: '/dashboard/realtime-list',
       },
+      {
+        page: 'TagList',
+        name: '태그 관리',
+        path: '/tag',
+      },
+      {
+        page: 'CategoryList',
+        name: '카테고리 관리',
+        path: '/category',
+      },
     ],
   },
   {
