@@ -105,8 +105,8 @@ function handleItemClick() {
 }
 
 .side-nav-item--active {
-  background-color: #ffede5;
-  color: #ff6129;
+  background-color: #E6F0FF;
+  color: #2B7FFF;
 }
 
 .side-nav-item__content {

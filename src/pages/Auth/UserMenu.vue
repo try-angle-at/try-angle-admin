@@ -69,7 +69,7 @@
 
       <v-card-title>
         <v-row no-gutters class="align-center | justify-center">
-          <v-icon size="64" color="#FF6129" icon="$cus-complete"/>
+          <v-icon size="64" color="#2B7FFF" icon="$cus-complete"/>
         </v-row>
         <v-row no-gutters class="align-center | justify-center | mt-3"
           style="color: #101828; font-size: 20px; font-weight: 400; letter-spacing: -0.45px;"
@@ -182,7 +182,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 <style scoped>
 .orange-card {
-  background-color: #FF875C;
+  background-color: #E6F0FF;
   position: relative;
   align-content: center;
   height: 280px;

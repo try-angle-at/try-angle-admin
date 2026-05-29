@@ -1,5 +1,11 @@
 <template>
-렌더 화면입니다.
+    <container>
+        <data-table
+            :headers="[]"
+            :items="[]"
+        > 
+        </data-table>
+    </container>
 </template>
 
 <script setup>
