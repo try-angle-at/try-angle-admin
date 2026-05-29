@@ -1,5 +1,4 @@
-import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
-import { defineAsyncComponent } from "vue";
+import { createRouter, createWebHashHistory } from 'vue-router';
 
 /* INFO rule
  * path
@@ -14,7 +13,7 @@ import { defineAsyncComponent } from "vue";
 const routes = [
   {
     path: '/',
-    redirect: '/home' // Redirect root path to dashboard
+    redirect: '/ref-images'
   },
   {
     path: '/home',
@@ -37,9 +36,44 @@ const routes = [
     component: () => import(/* webpackChunkName: "user-menu" */ "@/pages/Auth/UserMenu.vue")
   },
   {
-    path: '/group',
-    name: 'GroupList',
-    component: () => import(/* webpackChunkName: "group-list" */ "@/pages/Group/GroupList.vue")
+    path: '/ref-images',
+    name: 'RefImgList',
+    component: () => import(/* webpackChunkName: "ref-img-list" */ "@/pages/RefImg/RefImgList.vue")
+  },
+  {
+    path: '/ref-images/:id',
+    name: 'RefImgDetail',
+    component: () => import(/* webpackChunkName: "ref-img-detail" */ "@/pages/RefImg/RefImgDetail.vue")
+  },
+  {
+    path: '/ref-images/create',
+    name: 'RefImgForm',
+    component: () => import(/* webpackChunkName: "ref-img-form" */ "@/pages/RefImg/RefImgForm.vue")
+  },
+  {
+    path: '/products',
+    name: 'ProdList',
+    component: () => import(/* webpackChunkName: "prod-list" */ "@/pages/Product/ProdList.vue")
+  },
+  {
+    path: '/products/:id',
+    name: 'ProdDetail',
+    component: () => import(/* webpackChunkName: "prod-detail" */ "@/pages/Product/ProdDetail.vue")
+  },
+  {
+    path: '/products/create',
+    name: 'ProdForm',
+    component: () => import(/* webpackChunkName: "prod-form" */ "@/pages/Product/ProdForm.vue")
+  },
+  {
+    path: '/snaps',
+    name: 'SnapList',
+    component: () => import(/* webpackChunkName: "snap-list" */ "@/pages/Snap/SnapList.vue")
+  },
+  {
+    path: '/snaps/:id',
+    name: 'SnapDetail',
+    component: () => import(/* webpackChunkName: "snap-detail" */ "@/pages/Snap/SnapDetail.vue")
   },
 ];
 
