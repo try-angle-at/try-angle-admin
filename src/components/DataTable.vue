@@ -6,9 +6,9 @@
       :headers="normalizedHeaders"
       :items="items"
       :item-value="itemKey"
-      :items-per-page="internalItemsPerPage"
+      :items-per-page="tableItemsPerPage"
       items-per-page-text="display"
-      :page="internalPage"
+      :page="tablePage"
       :sort-by="internalSortBy"
       :search="internalSearch"
       :loading="loading"
@@ -25,7 +25,7 @@
       @update:sort-by="handleSortByUpdate"
       @click:row="handleClickRow"
     >
-      <template #bottom="{ pageCount }">
+      <template #bottom>
         <v-row no-gutters class="data-table-footer">
           <v-col class="data-table-footer__items-per-page">
             <v-col cols="auto" class="items-per-page-label">display</v-col>
@@ -43,7 +43,7 @@
           <v-pagination
             class="table-pagination"
             :model-value="internalPage"
-            :length="pageCount"
+            :length="paginationLength"
             :total-visible="5"
             density="comfortable"
             rounded="circle"
@@ -102,6 +102,14 @@ const props = defineProps({
   itemsPerPage: {
     type: Number,
     default: 10,
+  },
+  serverMode: {
+    type: Boolean,
+    default: false,
+  },
+  totalItems: {
+    type: Number,
+    default: null,
   },
   sortBy: {
     type: Array,
@@ -189,6 +197,21 @@ const internalPage = ref(props.page);
 const internalItemsPerPage = ref(props.itemsPerPage);
 const internalSortBy = ref(props.sortBy);
 const itemsPerPageOptions = [5, 10, 20, 50, 100];
+const tableItemsPerPage = computed(() => (props.serverMode ? -1 : internalItemsPerPage.value));
+const tablePage = computed(() => (props.serverMode ? 1 : internalPage.value));
+const paginationLength = computed(() => {
+  const perPage = Number(internalItemsPerPage.value) || 0;
+
+  if (typeof props.totalItems === 'number' && props.totalItems >= 0 && perPage > 0) {
+    return Math.max(1, Math.ceil(props.totalItems / perPage));
+  }
+
+  if (perPage <= 0) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil((props.items?.length || 0) / perPage));
+});
 
 watch(() => props.search, (value) => {
   internalSearch.value = value;
@@ -206,19 +229,15 @@ watch(() => props.sortBy, (value) => {
   internalSortBy.value = value;
 });
 
-function handleSearchUpdate(value) {
-  internalSearch.value = value || "";
-  emit("update:search", internalSearch.value);
-}
-
 function handlePageUpdate(value) {
   internalPage.value = value;
   emit("update:page", value);
 }
 
 function handleItemsPerPageUpdate(value) {
-  internalItemsPerPage.value = value;
-  emit("update:itemsPerPage", value);
+  const normalizedValue = Number(value) || props.itemsPerPage;
+  internalItemsPerPage.value = normalizedValue;
+  emit("update:itemsPerPage", normalizedValue);
 }
 
 function handleSortByUpdate(value) {

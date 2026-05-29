@@ -53,6 +53,8 @@
             :loading="isLoading"
             :page="pageNation.current"
             :items-per-page="pageNation.limit"
+            :server-mode="true"
+            :total-items="totalCount"
             @update:page="handlePageChange"
             @update:itemsPerPage="handleItemsPerPageChange"
             @rowClick="handleRowClick"
@@ -139,6 +141,13 @@ async function fetchListTags() {
 
     const list = response?.data?.items || [];
     const total = response?.data?.total || 0;
+    const maxPage = Math.max(1, Math.ceil(total / pageNation.value.limit));
+
+    if (pageNation.value.current > maxPage) {
+      pageNation.value.current = maxPage;
+      await fetchListTags();
+      return;
+    }
 
     const uniqueParentCode = Array.from(new Set(list.map((item = {}) => item.parentCode).filter(Boolean)));
     parentCodeOptions.value = [
