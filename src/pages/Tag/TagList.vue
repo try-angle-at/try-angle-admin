@@ -152,8 +152,8 @@ async function fetchListTags() {
       tagName: tag.tagName || '-',
       code: tag.code || '-',
       parentCode: tag.parentCode || '-',
-      cDate: util.formatUnixDate(tag.cDate),
-      uDate: util.formatUnixDate(tag.uDate),
+      cDate: util.formatUnixDateTime(tag.cDate),
+      uDate: util.formatUnixDateTime(tag.uDate),
       action: '상세보기',
     }));
 

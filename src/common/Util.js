@@ -60,6 +60,33 @@ const Util = (function () {
 
                 return `${year}-${month}-${day}`;
             },
+
+            formatUnixDateTime(value) {
+                if (value === null || value === undefined || value === '') {
+                    return '-';
+                }
+
+                const numericValue = Number(value);
+                if (Number.isNaN(numericValue)) {
+                    return '-';
+                }
+
+                // 10-digit unix seconds와 13-digit milliseconds 모두 지원
+                const milliseconds = numericValue < 1e12 ? numericValue * 1000 : numericValue;
+                const date = new Date(milliseconds);
+
+                if (Number.isNaN(date.getTime())) {
+                    return '-';
+                }
+
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hour = String(date.getHours()).padStart(2, '0');
+                const minute = String(date.getMinutes()).padStart(2, '0');
+
+                return `${year}-${month}-${day} / ${hour}:${minute}`;
+            },
         
 
         };
