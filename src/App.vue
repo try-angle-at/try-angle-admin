@@ -102,7 +102,7 @@
 
       <v-card-title>
         <v-row no-gutters class="align-center | justify-center">
-          <v-icon size="64" color="#FF6129" icon="$cus-complete-icon"/>
+          <v-icon size="64" color="#2B7FFF" icon="$cus-complete-icon"/>
         </v-row>
         <v-row no-gutters class="align-center | justify-center | mt-3"
           style="color: #101828; font-size: 20px; font-weight: 400; letter-spacing: -0.45px;"
@@ -220,9 +220,10 @@ watch(
 // 로그인 체크
 function checkLogin() {
   const user = localStorage.getItem('user');
+  const accessToken = localStorage.getItem('accessToken');
   const isPublicPage = publicPages.includes(route.path);
 
-  if (!user && !isPublicPage) {
+  if ((!user || !accessToken) && !isPublicPage) {
     console.log('로그인 정보 없음 - 로그인 페이지로 이동');
     navigateTo(router, '/login');
   }
