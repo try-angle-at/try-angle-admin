@@ -57,8 +57,93 @@
             </v-col>
         </v-row>
 
-        <v-row>
+        <v-row class="gallery-row | ma-2" no-gutters>
+          <v-col
+            v-if="isLoading"
+            cols="12"
+            class="py-10"
+          >
+            <v-row justify="center">
+              <v-progress-circular indeterminate color="#4A5565" />
+            </v-row>
+          </v-col>
 
+          <v-col
+            v-else-if="imgItems.length === 0"
+            cols="12"
+          >
+            <v-card class="empty-card" variant="outlined">
+              <v-card-text class="empty-text">표시할 레퍼런스 이미지가 없습니다.</v-card-text>
+            </v-card>
+          </v-col>
+
+          <template v-else>
+            <v-col
+              v-for="item in imgItems"
+              :key="item.id" 
+              cols="12" sm="6" md="4" lg="2" xl="2" class="px-1 | pb-2"
+            >
+              <v-card
+                class="gallery-card"
+                variant="outlined"
+                @click="handleClickBtn('goToDetail', item.id)"
+              >
+                <v-img
+                  :src="item.imgUrl"
+                  height="240"
+                  cover
+                  class="gallery-image"
+                >
+                  <template #placeholder>
+                    <div class="image-placeholder">이미지 로딩 중</div>
+                  </template>
+                </v-img>
+
+                <v-card-text class="pa-4">
+                  <v-row no-gutters class="info-row | mb-1">
+                    <v-icon color="#6A7282" size="18" class="mr-1">mdi-account-outline</v-icon>
+                    <span class="info-text">{{ item.nickname }}</span>
+                  </v-row>
+
+                  <v-row no-gutters class="align-center | justify-space-between | mb-2">
+                    <v-col cols="auto">
+                      <div class="card-title">{{ item.title }}</div>
+                    </v-col>
+                    <v-col cols="auto">
+                      <div class="use-count">
+                        <v-icon size="18" class="mr-1">mdi-camera-outline</v-icon>
+                        <span>{{ item.useCnt }}</span>
+                      </div>
+                    </v-col>
+                  </v-row>
+
+                  <v-row no-gutters class="mb-3 | ga-1">
+                    <v-chip size="small" variant="flat" class="category-chip">
+                      {{ item.categoryName }}
+                    </v-chip>
+                    <v-chip
+                      v-for="keyword in item.keywordList"
+                      :key="keyword"
+                      size="small"
+                      variant="outlined"
+                      class="tag-chip"
+                    >{{ keyword }}</v-chip>
+                  </v-row>
+
+
+                  <v-row no-gutters class="info-row mb-1">
+                    <v-icon color="#6A7282" size="18" class="mr-1">mdi-clock-time-four-outline</v-icon>
+                    <span class="info-text">등록 {{ item.cDate }}</span>
+                  </v-row>
+                  <v-row no-gutters class="info-row">
+                    <v-icon color="#6A7282" size="18" class="mr-1">mdi-update</v-icon>
+                    <span class="info-text">수정 {{ item.uDate }}</span>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+
+            </v-col>
+          </template>
         </v-row>
 
     </v-container>
@@ -144,7 +229,6 @@ async function fetchListReferences() {
       userId: reference.user?.userId,
       nickname: reference.user?.nickname || '-',
       title: reference.title || '-',
-      desc: reference.desc || '-',
       imgUrl: buildThumbnailUrl(reference.imgUrl),
       categoryId: reference.ctg?.ctgId,
       categoryName: reference.ctg?.ctgName || '-',
@@ -179,6 +263,7 @@ function handleClickBtn(action, value) {
       search.value.keyword = '';
       search.value.status = null;
       pageNation.value.current = 1;
+      fetchListReferences();
       break;
 
     case 'search':
@@ -283,6 +368,83 @@ function handleItemsPerPageChange(limit) {
     font-size: 12px;
     font-weight: 500;
 }
+
+  .gallery-row {
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+
+  .gallery-card {
+    height: 100%;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    background-color: #FFFFFF;
+  }
+
+  .gallery-image {
+    background-color: #F3F4F6;
+  }
+
+  .image-placeholder {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6A7282;
+    font-size: 14px;
+    background-color: #F9FAFB;
+  }
+
+  .empty-card {
+    border-radius: 12px;
+    border: 0.7px solid #E5E7EB;
+    background-color: #FFFFFF;
+  }
+
+  .empty-text {
+    padding: 48px 16px;
+    text-align: center;
+    color: #6A7282;
+    font-size: 14px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #364153;
+    line-height: 1.5;
+  }
+
+  .category-chip {
+    background-color: #FFF4F0;
+    border: 0.7px solid #FFE0D4;
+    color: #FF6129;
+    font-size: 10px;
+  }
+
+  .tag-chip {
+    background-color: #F3F4F6;
+    color: #4A5565;
+    font-size: 10px;
+  }
+
+  .use-count {
+    display: flex;
+    align-items: center;
+    color: #6A7282;
+    font-size: 13px;
+  }
+
+  .info-row {
+    align-items: center;
+  }
+
+  .info-text {
+    color: #6A7282;
+    font-size: 13px;
+  }
 
 .thumb-img {
     border-radius: 8px; 
