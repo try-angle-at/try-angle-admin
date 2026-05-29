@@ -1,26 +1,26 @@
 <template>
     <v-container fluid>
         <v-row no-gutters class="search-row | align-item-center | justify-space-between">
-      <v-col cols="auto" class="align-item-center | d-flex | search-controls">
+            <v-col cols="auto" class="align-item-center | d-flex">
                 <v-text-field
-                  v-model="search.keyword"
+                    v-model="search.keyword"
                     placeholder="상품명 검색" 
                     class="inputbox | mr-2"
                     variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
                     hide-details
                 />
                 <v-select
-                  v-model="search.status"
-          :items="statusOptions"
-          item-title="label"
-          item-value="value"
+                    v-model="search.status"
+                    :items="statusOptions"
+                    item-title="label"
+                    item-value="value"
                     placeholder="상품명 상태" 
-          class="inputbox status-select"
+                    class="inputbox"
                     variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
                     hide-details
                 />
             </v-col>
-      <v-col cols="auto" class="align-item-center | d-flex">
+            <v-col cols="auto" class="align-item-center">
                 <v-btn
                     @click="handleClickBtn('reset')"
                     variant="outlined"
@@ -33,6 +33,7 @@
                 >검색</v-btn>
             </v-col>
         </v-row>
+
         <v-row no-gutters class="align-item-center | justify-space-between | mt-8 | mb-2 | ml-2">
             <v-col class="search-label">
             총 <span style="color: #2563EB; font-weight: 500;">{{ totalCount }}</span>개
@@ -49,13 +50,21 @@
         <data-table
             :headers="headerItems"
             :items="tableItems"
-      :loading="isLoading"
-      :page="pageNation.current"
-      :items-per-page="pageNation.limit"
-      @update:page="handlePageChange"
-      @update:itemsPerPage="handleItemsPerPageChange"
-      @rowClick="handleRowClick"
+            :loading="isLoading"
+            :page="pageNation.current"
+            :items-per-page="pageNation.limit"
+            @update:page="handlePageChange"
+            @update:itemsPerPage="handleItemsPerPageChange"
+            @rowClick="handleRowClick"
         > 
+          <template #item.action="{ item }">
+            <v-btn
+              class="detail-btn"
+              size="small"
+              variant="outlined"
+              @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
+            >상세보기</v-btn>
+          </template>
         </data-table>
     </v-container>
 </template>
@@ -149,7 +158,7 @@ async function fetchProducts() {
       pStat: getStatusLabel(product.pStat),
       cDate: product.cDate,
       uDate: product.uDate,
-      action: '상세',
+      action: '상세보기',
     }));
 
     const keyword = search.value.keyword.trim().toLowerCase();
@@ -229,11 +238,6 @@ function handleItemsPerPageChange(limit) {
     border: 0.7px solid #E5E7EB;
     background: #FFF;
 }
-
-.search-controls {
-  gap: 8px;
-}
-
 .search-label {
     color: #4A5565;
     font-size: 14px;
@@ -260,10 +264,6 @@ function handleItemsPerPageChange(limit) {
     width: 240px !important;
 }
 
-.status-select :deep(.v-input__control) {
-  width: 180px !important;
-}
-
 .inputbox :deep(.v-field__input) {
     color: #364153 !important;
     font-size: 14px !important;
@@ -278,5 +278,13 @@ function handleItemsPerPageChange(limit) {
 .inputbox :deep(.v-icon) {
     color: #4A5565 !important;
     opacity: 1;
+}
+
+.detail-btn {
+  min-width: 72px;
+  border-color: #D1D5DB;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>
