@@ -448,7 +448,10 @@ export async function listTags(params = {}) {
     body: compact({
       page: params.page,
       limit: params.limit,
-      parentCode: params.parentCode,
+      filter: {
+        parentCode: params.parentCode ?? null,
+        tagName: params.tagName ?? null,
+      },
     }),
   });
 }

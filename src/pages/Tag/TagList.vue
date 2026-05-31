@@ -130,6 +130,7 @@ const tableItems = ref([]);
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
+  fetchParentCodeOptions();
   fetchListTags();
 });
 
@@ -143,6 +144,7 @@ async function fetchListTags() {
       page: pageNation.value.current,
       limit: pageNation.value.limit,
       parentCode: search.value.parentCode,
+      tagName: search.value.keyword.trim() || null,
     });
 
     const list = response?.data?.items || [];
@@ -155,15 +157,9 @@ async function fetchListTags() {
       return;
     }
 
-    const uniqueParentCode = Array.from(new Set(list.map((item = {}) => item.parentCode).filter(Boolean)));
-    parentCodeOptions.value = [
-      { label: '전체 상위 태그', value: null },
-      ...uniqueParentCode.map((value) => ({ label: value, value })),
-    ];
-
-    let mappedRows = list.map((tag = {}) => ({
+    const mappedRows = list.map((tag = {}) => ({
       id: tag.id,
-      userId: tag.userId,
+      userId: tag.userName || tag.userId || '-',
       tagName: tag.tagName || '-',
       code: tag.code || '-',
       parentCode: tag.parentCode || '-',
@@ -171,14 +167,7 @@ async function fetchListTags() {
       uDate: util.formatUnixDateTime(tag.uDate),
     }));
 
-    const keyword = search.value.keyword.trim().toLowerCase();
-    if (keyword) {
-      mappedRows = mappedRows.filter((item) => String(item.tagName).toLowerCase().includes(keyword));
-      totalCount.value = mappedRows.length;
-    } else {
-      totalCount.value = total;
-    }
-
+    totalCount.value = total;
     tableItems.value = mappedRows;
 
   } catch (error) {
@@ -187,6 +176,43 @@ async function fetchListTags() {
     totalCount.value = 0;
   } finally {
     isLoading.value = false;
+  }
+}
+
+async function fetchParentCodeOptions() {
+  try {
+    const response = await HttpHandler.listTags({
+      page: 1,
+      limit: 100,
+      parentCode: '',
+      tagName: null,
+    });
+
+    const rootTags = response?.data?.items || [];
+    const rootTagMap = new Map();
+
+    rootTags.forEach((tag = {}) => {
+      const code = tag.code;
+      if (!code || rootTagMap.has(code)) {
+        return;
+      }
+
+      rootTagMap.set(code, {
+        code,
+        tagName: tag.tagName,
+      });
+    });
+
+    parentCodeOptions.value = [
+      { label: '전체 상위 태그', value: null },
+      ...Array.from(rootTagMap.values()).map((tag) => ({
+        label: tag.tagName || tag.code,
+        value: tag.code,
+      })),
+    ];
+  } catch (error) {
+    console.error('상위 태그 옵션 조회 실패:', error);
+    parentCodeOptions.value = [{ label: '전체 상위 태그', value: null }];
   }
 }
 

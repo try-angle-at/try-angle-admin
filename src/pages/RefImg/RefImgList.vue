@@ -173,7 +173,7 @@ const search = ref({
 
 const pageNation = ref({
   current: 1,
-  limit: 20,
+  limit: 10,
 });
 
 const totalCount = ref(0);
