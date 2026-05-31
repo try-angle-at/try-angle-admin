@@ -547,7 +547,10 @@ export async function listProducts(params = {}) {
     body: compact({
       page: params.page,
       limit: params.limit,
-      pStat: params.pStat,
+      filter: {
+        name: params.name ?? null,
+        pStat: params.pStat ?? null,
+      },
     }),
   });
 }
@@ -565,7 +568,10 @@ export async function createProduct(params = {}) {
     body: compact({
       name: params.name,
       brand: params.brand,
-      price: params.price,
+      filter: {
+        name: params.name ?? null,
+        pStat: params.pStat ?? null,
+      },
       thumbUrl: params.thumbUrl,
       pStat: params.pStat,
     }),

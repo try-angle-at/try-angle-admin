@@ -53,6 +53,8 @@
             :loading="isLoading"
             :page="pageNation.current"
             :items-per-page="pageNation.limit"
+          :server-mode="true"
+          :total-items="totalCount"
             @update:page="handlePageChange"
             @update:itemsPerPage="handleItemsPerPageChange"
             @rowClick="handleRowClick"
@@ -72,9 +74,9 @@
 
           <template #item.pStat="{ item }">
             <span
-              v-if="(item?.raw ?? item)?.pStat && (item?.raw ?? item)?.pStat !== '-'"
+              v-if="(item?.raw ?? item)?.pStat !== undefined && (item?.raw ?? item)?.pStat !== null && (item?.raw ?? item)?.pStat !== '-'"
               class="status-tag"
-            >{{ (item?.raw ?? item)?.pStat }}</span>
+            >{{ getStatusLabel((item?.raw ?? item)?.pStat) }}</span>
             <span v-else>-</span>
           </template>
         
@@ -124,11 +126,9 @@ const pageNation = ref({
 const totalCount = ref(0);
 const isLoading = ref(false);
 
-const statusOptions = [
+const statusOptions = ref([
   { label: '전체 상태', value: null },
-  { label: '노출', value: 1 },
-  { label: '숨김', value: 0 },
-];
+]);
 
 const headerItems = [
   { text: '썸네일', value: 'thumbUrl' },
@@ -147,18 +147,14 @@ const tableItems = ref([]);
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
+  fetchStatusLabelOption();
   fetchListProducts();
 });
 
 // ----- 함수 정의 ----- //
 function getStatusLabel(value) {
-  if (value === 1 || value === '1') {
-    return '노출';
-  }
-  if (value === 0 || value === '0') {
-    return '숨김';
-  }
-  return '-';
+  const matchedOption = statusOptions.value.find((option) => option.value === value || option.value === String(value));
+  return matchedOption?.label || '-';
 }
 
 function buildThumbnailUrl(path) {
@@ -183,36 +179,31 @@ async function fetchListProducts() {
   isLoading.value = true;
 
   try {
+    const keyword = search.value.keyword.trim();
     const response = await HttpHandler.listProducts({
       page: pageNation.value.current,
       limit: pageNation.value.limit,
+      name: keyword || null,
       pStat: search.value.status,
     });
 
-    const list = response.data.items;
-    const total = response.data.total;
+    const list = response?.data?.items || [];
+    const total = response?.data?.total || 0;
 
-    let mappedRows = list.map((product = {}) => ({
+    const mappedRows = list.map((product = {}) => ({
       id: product.id,
-      userId: product.userId,
-      name: product.name,
-      brand: product.brand,
+      userId: product.userName || product.userId || '-',
+      name: product.name || '-',
+      brand: product.brand || '-',
       price: typeof product.price === 'number' ? product.price.toLocaleString() : product.price,
       thumbUrl: buildThumbnailUrl(product.thumbUrl),
-      pStat: getStatusLabel(product.pStat),
+      pStat: product.pStat,
       cDate: util.formatUnixDate(product.cDate),
       uDate: util.formatUnixDate(product.uDate),
       action: '상세보기',
     }));
 
-    const keyword = search.value.keyword.trim().toLowerCase();
-    if (keyword) {
-      mappedRows = mappedRows.filter((item) => String(item.name).toLowerCase().includes(keyword));
-      totalCount.value = mappedRows.length;
-    } else {
-      totalCount.value = total;
-    }
-
+    totalCount.value = total;
     tableItems.value = mappedRows;
 
   } catch (error) {
@@ -224,12 +215,48 @@ async function fetchListProducts() {
   }
 }
 
+async function fetchStatusLabelOption() {
+  try {
+    const response = await HttpHandler.listTags({
+      page: 1,
+      parentCode: 'PROD_STAT_ROOT',
+      tagName: null,
+    });
+
+    const statusItems = response?.data?.items || [];
+    const uniqueStatusOptions = new Map();
+
+    statusItems.forEach((status = {}) => {
+      const codeSuffix = Number(String(status.code || '').split('_').pop());
+      const value = Number.isNaN(codeSuffix) ? status.code : codeSuffix;
+
+      if (value === undefined || value === null || uniqueStatusOptions.has(value)) {
+        return;
+      }
+
+      uniqueStatusOptions.set(value, {
+        value,
+        label: status.tagName || status.code || String(value),
+      });
+    });
+
+    statusOptions.value = [
+      { label: '전체 상태', value: null },
+      ...Array.from(uniqueStatusOptions.values()),
+    ];
+  } catch (error) {
+    console.error('상품 상태 옵션 조회 실패:', error);
+    statusOptions.value = [{ label: '전체 상태', value: null }];
+  }
+}
+
 function handleClickBtn(action, value) {
   switch (action) {
     case 'reset':
       search.value.keyword = '';
       search.value.status = null;
       pageNation.value.current = 1;
+      fetchListProducts();
       break;
 
     case 'search':
