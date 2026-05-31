@@ -390,7 +390,11 @@ export async function listReferences(params = {}) {
     body: compact({
       page: params.page,
       limit: params.limit,
-      ctgId: params.ctgId,
+      filter: {
+        ctgId: params.ctgId ?? null,
+        title: params.title ?? null,
+        kwd: Array.isArray(params.kwd) ? params.kwd : [],
+      },
     }),
   });
 }

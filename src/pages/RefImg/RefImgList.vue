@@ -10,8 +10,8 @@
                     hide-details
                 />
                 <v-select
-                    v-model="search.status"
-                    :items="statusOptions"
+                  v-model="search.ctgId"
+                  :items="categoryOptions"
                     item-title="label"
                     item-value="value"
                     placeholder="이미지 카테고리 검색" 
@@ -20,10 +20,12 @@
                     hide-details
                 />
                 <v-select
-                    v-model="search.status"
-                    :items="statusOptions"
+                  v-model="search.tagCodes"
+                  :items="tagOptions"
                     item-title="label"
                     item-value="value"
+                    multiple
+                    chips
                     placeholder="이미지 태그 검색" 
                     class="inputbox"
                     variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
@@ -168,7 +170,8 @@ const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, 
 
 const search = ref({
   keyword: '',
-  status: null,
+  ctgId: null,
+  tagCodes: [],
 });
 
 const pageNation = ref({
@@ -179,17 +182,20 @@ const pageNation = ref({
 const totalCount = ref(0);
 const isLoading = ref(false);
 
-const statusOptions = [
-  { label: '전체 상태', value: null },
-  { label: '노출', value: 1 },
-  { label: '숨김', value: 0 },
-];
+const categoryOptions = ref([
+  { label: '전체 카테고리', value: null },
+]);
+
+const tagOptions = ref([
+]);
 
 const imgItems = ref([]);
 
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
+  fetchListCategory();
+  fetchTagCategotry();
   fetchListReferences();
 });
 
@@ -216,15 +222,19 @@ async function fetchListReferences() {
   isLoading.value = true;
 
   try {
+    const keyword = search.value.keyword.trim();
     const response = await HttpHandler.listReferences({
       page: pageNation.value.current,
       limit: pageNation.value.limit,
+      ctgId: search.value.ctgId,
+      title: keyword || null,
+      kwd: search.value.tagCodes,
     });
 
     const list = response?.data?.items || [];
     const total = response?.data?.total || 0;
 
-    let mappedRows = list.map((reference = {}) => ({
+    const mappedRows = list.map((reference = {}) => ({
       id: reference.imgId,
       userId: reference.user?.userId,
       nickname: reference.user?.nickname || '-',
@@ -238,14 +248,7 @@ async function fetchListReferences() {
       uDate: util.formatUnixDateTime(reference.uDate),
     }));
 
-    const keyword = search.value.keyword.trim().toLowerCase();
-    if (keyword) {
-      mappedRows = mappedRows.filter((item) => String(item.title).toLowerCase().includes(keyword));
-      totalCount.value = mappedRows.length;
-    } else {
-      totalCount.value = total;
-    }
-
+    totalCount.value = total;
     imgItems.value = mappedRows;
 
   } catch (error) {
@@ -257,11 +260,83 @@ async function fetchListReferences() {
   }
 }
 
+async function fetchListCategory() {
+  try {
+    const categoryResponse = await HttpHandler.listCategories({ page: 1, limit: 20 });
+    const categoryItems = categoryResponse?.data?.items || [];
+
+    const uniqueCategories = new Map();
+    categoryItems.forEach((category = {}) => {
+      const id = category.id;
+      if (id === undefined || id === null || uniqueCategories.has(id)) {
+        return;
+      }
+
+      uniqueCategories.set(id, {
+        value: id,
+        label: category.name || String(id),
+      });
+    });
+
+    categoryOptions.value = [
+      { label: '전체 카테고리', value: null },
+      ...Array.from(uniqueCategories.values()),
+    ];
+  } catch (error) {
+    console.error('카테고리 옵션 조회 실패:', error);
+    categoryOptions.value = [{ label: '전체 카테고리', value: null }];
+  }
+}
+
+async function fetchTagCategotry() {
+  try {
+    const [moodTagResponse, clothTagResponse] = await Promise.all([
+      HttpHandler.listTags({
+        page: 1,
+        limit: 20,
+        parentCode: 'MOOD_ROOT',
+        tagName: null,
+      }),
+      HttpHandler.listTags({
+        page: 1,
+        limit: 20,
+        parentCode: 'CLOTH_ROOT',
+        tagName: null,
+      }),
+    ]);
+
+    const moodTagItems = moodTagResponse?.data?.items || [];
+    const clothTagItems = clothTagResponse?.data?.items || [];
+    const tagItems = [...moodTagItems, ...clothTagItems];
+    const uniqueTags = new Map();
+
+    tagItems.forEach((tag = {}) => {
+      const code = tag.code;
+      if (!code || uniqueTags.has(code)) {
+        return;
+      }
+
+      uniqueTags.set(code, {
+        value: code,
+        label: tag.tagName || code,
+      });
+    });
+
+    tagOptions.value = [
+      ...Array.from(uniqueTags.values()),
+    ];
+  } catch (error) {
+    console.error('태그 옵션 조회 실패:', error);
+  }
+}
+
+
 function handleClickBtn(action, value) {
   switch (action) {
     case 'reset':
       search.value.keyword = '';
-      search.value.status = null;
+      search.value.ctgId = null;
+      search.value.tagCodes = [];
       pageNation.value.current = 1;
       fetchListReferences();
       break;
