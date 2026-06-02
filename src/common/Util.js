@@ -11,7 +11,7 @@ const Util = (function () {
                     return false;
                 }
 
-                return /^[A-Za-z가-힣]+$/.test(String(value));
+                return /^[A-Za-z가-힣 ]+$/.test(String(value));
             },
 
             ValidEngUpper(value) {
