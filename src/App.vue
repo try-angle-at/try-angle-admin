@@ -101,9 +101,6 @@
       />
 
       <v-card-title>
-        <v-row no-gutters class="align-center | justify-center">
-          <v-icon size="64" color="#2B7FFF" icon="$cus-complete-icon"/>
-        </v-row>
         <v-row no-gutters class="align-center | justify-center | mt-3"
           style="color: #101828; font-size: 20px; font-weight: 400; letter-spacing: -0.45px;"
         >
