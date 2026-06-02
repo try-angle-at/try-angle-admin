@@ -65,7 +65,7 @@
               class="detail-btn | fill-grey | mr-1"
               size="small"
               variant="outlined"
-              @click.stop="handleClickBtn('edit', (item?.raw ?? item)?.id)"
+              @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
             >수정</v-btn>
             <v-btn
               class="detail-btn"
@@ -78,6 +78,21 @@
         </data-table>
 
     </v-container>
+    
+  <v-dialog 
+    v-if="tagDialog.isActive && tagDialog.mode === 'create'" 
+    v-model="tagDialog.isActive" width="600px">
+    <tag-form-create 
+      @close="tagDialog.isActive = false" 
+    />
+  </v-dialog>
+  <v-dialog v-if="tagDialog.isActive && tagDialog.mode === 'detail'" 
+    v-model="tagDialog.isActive" width="400px">
+    <tag-form-detail 
+      :tag-id="tagDialog.tagId" 
+      @close="tagDialog.isActive = false" 
+    />
+  </v-dialog>
 </template>
 
 
@@ -89,6 +104,8 @@ import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
 
 import DataTable from '@/components/DataTable.vue';
+import TagFormCreate from '@/pages/Tag/TagFormCreate.vue';
+import TagFormDetail from '@/pages/Tag/TagFormDetail.vue';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
 
@@ -97,6 +114,12 @@ const emit = defineEmits([
 ]);
 const router = useRouter(); 
 const util = Util.getInstance();
+
+const tagDialog = ref({
+  isActive: false,
+  mode: 'create',
+  tagId: null,
+});
 
 const search = ref({
   keyword: '',
@@ -124,7 +147,6 @@ const headerItems = [
   { text: '수정일', value: 'uDate' },
   { text: '액션', value: 'action' },
 ];
-
 const tableItems = ref([]);
 
 // ----- 라이프 사이클 ----- //
@@ -230,14 +252,18 @@ function handleClickBtn(action, value) {
       break;
 
     case 'goToCreate':
-      navigateTo(router, '/tag/create');
+      tagDialog.value.isActive = true;
+      tagDialog.value.mode = 'create';
+      tagDialog.value.tagId = null;
       break;
 
-    case 'edit':
-      console.log('태그 액션:', action, 'id:', value);
+    case 'goToDetail':
+      tagDialog.value.isActive = true;
+      tagDialog.value.mode = 'detail';
+      tagDialog.value.tagId = value;
       break;
 
-    case 'delete':
+    case 'delete': 
       console.log('태그 액션:', action, 'id:', value);
       break;
 

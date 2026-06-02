@@ -1,5 +1,5 @@
 <template>
-렌더 화면입니다.
+디테일 렌더 화면입니다.
 </template>
 
 <script setup>
