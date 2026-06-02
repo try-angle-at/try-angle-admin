@@ -64,15 +64,15 @@
       <template v-slot:actions>
         <div class="action-btn-wrap">
           <v-btn 
-            class="thin-btn action-btn" 
-            style="border-radius: 16px;" 
+            class="thin-btn" 
+            style="border-radius: 16px; flex: 1;" 
             variant="outlined" 
             @click="emit('close')" 
             :loading="isSubmitting"
           >취소</v-btn>
           <v-btn 
-            class="active-thin-btn action-btn" 
-            style="border-radius: 16px;" 
+            class="active-thin-btn" 
+            style="border-radius: 16px; flex: 1;" 
             variant="outlined" 
             @click="handleClickBtn('create')" 
             :loading="isSubmitting"
@@ -94,7 +94,7 @@
 
       <v-card-title>
         <v-row no-gutters class="align-center | justify-center | mt-3"
-          style="color: #101828; font-size: 20px; font-weight: 400; letter-spacing: -0.45px;"
+          style="color: #364153; font-size: 18px; font-weight: 700; letter-spacing: -0.2px;"
         >
           {{ dialog.title }}
         </v-row>
@@ -107,7 +107,7 @@
       </v-card-text>
 
       <template v-slot:actions>
-          <v-btn class="active-btn" style="border-radius: 16px;" variant="outlined" @click="dialog.okButton" :loading="isSubmitting">{{ dialog.okText }}</v-btn>
+          <v-btn class="active-thin-btn" style="border-radius: 16px;" variant="outlined" @click="dialog.okButton" :loading="isSubmitting">{{ dialog.okText }}</v-btn>
       </template>
     </v-card>
   </v-dialog>
@@ -372,10 +372,6 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
   display: flex;
   width: 100%;
   gap: 8px;
-}
-
-.action-btn {
-  flex: 1;
 }
 
 </style>

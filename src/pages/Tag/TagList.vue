@@ -12,12 +12,12 @@
                 <v-select
                   v-model="search.parentCode"
                   :items="parentCodeOptions"
-                    item-title="label"
-                    item-value="value"
-                    placeholder="상위 태그 선택" 
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
+                  item-title="label"
+                  item-value="value"
+                  placeholder="상위 태그 선택" 
+                  class="inputbox | mr-2"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
                 />
             </v-col>
             <v-col cols="auto" class="align-item-center">
@@ -78,7 +78,53 @@
         </data-table>
 
     </v-container>
-    
+
+  <!-- 다이얼로그 -->
+  <v-dialog v-model="dialog.isActive" width="400px">
+    <v-card style="padding: 16px; border-radius: 24px;">
+      <v-btn 
+        icon="mdi-close" variant="text" size="small"
+        v-if="!dialog.isOneBtn"
+        @click="dialog.isActive = false"
+        style="position: absolute; top: 12px; right: 12px; color: #6B7280; z-index: 10;"
+      />
+
+      <v-card-title>
+        <v-row no-gutters class="align-center | justify-center | mt-3"
+          style="color: #364153; font-size: 18px; font-weight: 700; letter-spacing: -0.2px;"
+        >
+          {{ dialog.title }}
+        </v-row>
+      </v-card-title>
+
+      <v-card-text style="padding: 0px; margin-bottom: 12px;">
+        <v-row no-gutters
+        style="justify-content: center; text-align: center; color: #6A7282; font-size: 14px; font-weight: 400; letter-spacing: -0.15px;"
+        v-html="dialog.text"/>
+      </v-card-text>
+
+      <template v-slot:actions>
+        <div style="display: flex; width: 100%; gap: 8px;">
+          <v-btn 
+            class="thin-btn" 
+            style="border-radius: 16px; flex: 1;" 
+            variant="outlined" 
+            @click="dialog.isActive = false" 
+            :loading="isSubmitting"
+          >취소</v-btn>
+          <v-btn 
+            class="active-thin-btn" 
+            style="border-radius: 16px; flex: 1;" 
+            variant="outlined" 
+            @click="dialog.okButton" 
+            :loading="isSubmitting">
+            {{ dialog.okText }}
+          </v-btn>
+        </div>
+      </template>
+    </v-card>
+  </v-dialog>
+
   <v-dialog 
     v-if="tagDialog.isActive && tagDialog.mode === 'create'" 
     v-model="tagDialog.isActive" width="600px">
@@ -148,6 +194,15 @@ const headerItems = [
   { text: '액션', value: 'action' },
 ];
 const tableItems = ref([]);
+
+const dialog = ref({
+  title: '',
+  text: '',
+  isActive: false,
+  isOneBtn: false,
+  okText: '확인',
+  okButton() {}
+});
 
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
@@ -238,6 +293,31 @@ async function fetchParentCodeOptions() {
   }
 }
 
+async function fetchDeleteTag(value) {
+  if (!value) {
+    return;
+  }
+
+  isLoading.value = true;
+
+  try {
+    const response = await HttpHandler.deleteTag({ id: value });
+    const statusCode = response?.status?.code;
+    const isDeleted = response?.data?.deleted === true;
+
+    if (statusCode !== 'S0000' || !isDeleted) {
+      throw new Error(response?.status?.msg || '태그 삭제에 실패했습니다.');
+    }
+
+    await fetchListTags();
+    await fetchParentCodeOptions();
+  } catch (error) {
+    console.error('태그 삭제 실패:', error);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 function handleClickBtn(action, value) {
   switch (action) {
     case 'reset':
@@ -264,7 +344,16 @@ function handleClickBtn(action, value) {
       break;
 
     case 'delete': 
-      console.log('태그 액션:', action, 'id:', value);
+      openDialog(
+        '삭제 확인',
+        '정말 이 태그를 삭제하시겠습니까?<br/>삭제 시 하위 태그도 함께 삭제됩니다.',
+        () => {
+          dialog.value.isActive = false;
+          fetchDeleteTag(value);
+        },
+        false,
+        '삭제'
+      );
       break;
 
     default:
@@ -290,6 +379,15 @@ function handleItemsPerPageChange(limit) {
   pageNation.value.limit = limit;
   pageNation.value.current = 1;
   fetchListTags();
+}
+
+function openDialog(title, text, onConfirm, isOneBtn, okText) {
+  dialog.value.title = title;
+  dialog.value.text = text;
+  dialog.value.okButton = onConfirm;
+  dialog.value.isActive = true;
+  dialog.value.isOneBtn = isOneBtn || false;
+  dialog.value.okText = okText || '확인';
 }
 </script> 
 
