@@ -20,12 +20,14 @@
         </v-row>
         <v-row no-gutters justify="center" class="mt-1">
           <v-select
+              v-model="form.parentCode"
               placeholder="부모 태그를 선택해주세요" 
               class="inputbox | mr-2"
               :items="parentCodeOptions"
               item-title="label"
               item-value="value"
               :error-messages="errorMsg.parentCode"
+              @update:model-value="errorMsg.parentCode = ''"
               variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB" 
           />
         </v-row>
@@ -35,9 +37,11 @@
         </v-row>
         <v-row no-gutters justify="center" class="mt-1">
           <v-text-field
+              v-model="form.name"
               placeholder="태그명을 입력해주세요" 
               class="inputbox | mr-2"
               :error-messages="errorMsg.name"
+              @update:model-value="errorMsg.name = ''"
               variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
           />
         </v-row>
@@ -47,9 +51,11 @@
         </v-row>
         <v-row no-gutters justify="center" class="mt-1">
           <v-text-field
+              v-model="form.code"
               placeholder="태그 코드를 입력해주세요" 
               class="inputbox | mr-2"
               :error-messages="errorMsg.code"
+              @update:model-value="errorMsg.code = ''"
               variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
           />
         </v-row>
@@ -110,12 +116,21 @@
 
 <script setup>
 // ----- 선언부 ----- //
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, ref } from "vue";
 import * as HttpHandler from '@/common/HttpHandler.js';
+import Util from '@/common/Util.js';
 
 const emit = defineEmits([
   'close'
 ]);
+const util = Util.getInstance();
+const isSubmitting = ref(false);
+
+const form = ref({
+  parentCode: null,
+  name: '',
+  code: '',
+});
 
 const errorMsg = ref({
   parentCode: '',
@@ -140,10 +155,6 @@ const dialog = ref({
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   fetchParentCodeOptions();
-});
-
-onUnmounted(() => {
-
 });
 
 // ----- 함수 정의 ----- //
@@ -190,8 +201,7 @@ async function fetchParentCodeOptions() {
 function handleClickBtn(action, value) {
   switch (action) {
     case 'create':
-
-      emit('close');
+      createTag();
       break;
 
     default:
@@ -199,6 +209,115 @@ function handleClickBtn(action, value) {
   }
 }
 
+
+function resetErrorMsg() {
+  errorMsg.value = {
+    parentCode: '',
+    name: '',
+    code: '',
+  };
+}
+
+function validateForm() {
+  resetErrorMsg();
+
+  const name = form.value.name?.trim() || '';
+  const code = form.value.code?.trim() || '';
+
+  if (!name) {
+    errorMsg.value.name = '태그명을 입력해주세요.';
+  } else if (!util.ValidKorEng(name)) {
+    errorMsg.value.name = '태그명은 한글/영문만 입력 가능합니다.';
+  }
+
+  if (!code) {
+    errorMsg.value.code = '태그 코드를 입력해주세요.';
+  } else if (!util.ValidEngNumUpper(code)) {
+    errorMsg.value.code = '태그 코드는 영문 대문자, 숫자, _만 입력 가능합니다.';
+  }
+
+  return !errorMsg.value.name && !errorMsg.value.code;
+}
+
+function getCurrentUserId() {
+  try {
+    const rawUser = localStorage.getItem('user');
+    if (!rawUser) {
+      return null;
+    }
+
+    const parsedUser = JSON.parse(rawUser);
+    return parsedUser?.userId ?? parsedUser?.id ?? parsedUser?.data?.id ?? null;
+  } catch (error) {
+    console.error('사용자 정보 파싱 실패:', error);
+    return null;
+  }
+}
+
+async function createTag() {
+  if (isSubmitting.value) {
+    return;
+  }
+
+  if (!validateForm()) {
+    return;
+  }
+
+  const userId = getCurrentUserId();
+
+  if (!userId) {
+    openDialog(
+      '생성 실패',
+      '로그인 사용자 정보를 찾을 수 없습니다.<br/>다시 로그인 후 시도해주세요.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
+    return;
+  }
+
+  isSubmitting.value = true;
+
+  try {
+    const response = await HttpHandler.createTag({
+      userId,
+      parentCode: form.value.parentCode,
+      code: form.value.code.trim(),
+      tagName: form.value.name.trim(),
+    });
+
+    const statusCode = response?.status?.code;
+    if (statusCode && statusCode !== 'S0000') {
+      throw new Error(response?.status?.msg || '태그 생성에 실패했습니다.');
+    }
+
+    openDialog(
+      '생성 완료',
+      '태그가 생성되었습니다.',
+      () => {
+        dialog.value.isActive = false;
+        emit('close');
+      },
+      true,
+      '확인'
+    );
+  } catch (error) {
+    console.error('태그 생성 실패:', error);
+    openDialog(
+      '생성 실패',
+      error?.message || '태그 생성 중 오류가 발생했습니다.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
+  } finally {
+    isSubmitting.value = false;
+  }
+}
 
 function openDialog(title, text, onConfirm, isOneBtn, okText) {
   dialog.value.title = title;

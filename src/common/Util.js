@@ -22,6 +22,15 @@ const Util = (function () {
                 return /^[A-Z_]+$/.test(String(value));
             },
             
+
+            ValidEngNumUpper(value) {
+                if (value === null || value === undefined || value === '') {
+                    return false;
+                }
+
+                return /^[A-Z0-9_]+$/.test(String(value));
+            },
+            
             formatUnixDate(value) {
                 if (value === null || value === undefined || value === '') {
                     return '-';
