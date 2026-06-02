@@ -106,6 +106,7 @@
       <template v-slot:actions>
         <div style="display: flex; width: 100%; gap: 8px;">
           <v-btn 
+            v-if="!dialog.isOneBtn"
             class="thin-btn" 
             style="border-radius: 16px; flex: 1;" 
             variant="outlined" 
@@ -114,7 +115,7 @@
           >취소</v-btn>
           <v-btn 
             class="active-thin-btn" 
-            style="border-radius: 16px; flex: 1;" 
+            :style="`border-radius: 16px; flex: 1; ${dialog.isOneBtn ? 'width: 100%;' : ''}`" 
             variant="outlined" 
             @click="dialog.okButton" 
             :loading="isSubmitting">
@@ -179,6 +180,7 @@ const pageNation = ref({
 
 const totalCount = ref(0);
 const isLoading = ref(false);
+const isSubmitting = ref(false);
 
 const parentCodeOptions = ref([
   { label: '전체 상위 태그', value: null },
@@ -298,6 +300,8 @@ async function fetchDeleteTag(value) {
     return;
   }
 
+  dialog.value.isActive = false;
+  isSubmitting.value = true;
   isLoading.value = true;
 
   try {
@@ -311,9 +315,30 @@ async function fetchDeleteTag(value) {
 
     await fetchListTags();
     await fetchParentCodeOptions();
+
+    openDialog(
+      '삭제 완료',
+      '태그가 삭제되었습니다.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
   } catch (error) {
-    console.error('태그 삭제 실패:', error);
+    console.error('태그 삭제 실패:', error);  
+    openDialog(
+      '삭제 실패',
+      error?.message || '태그 삭제 중 오류가 발생했습니다.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
+
   } finally {
+    isSubmitting.value = false;
     isLoading.value = false;
   }
 }
@@ -348,7 +373,6 @@ function handleClickBtn(action, value) {
         '삭제 확인',
         '정말 이 태그를 삭제하시겠습니까?<br/>삭제 시 하위 태그도 함께 삭제됩니다.',
         () => {
-          dialog.value.isActive = false;
           fetchDeleteTag(value);
         },
         false,
