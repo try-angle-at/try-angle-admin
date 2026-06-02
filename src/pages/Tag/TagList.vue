@@ -128,13 +128,13 @@
 
   <v-dialog 
     v-if="tagDialog.isActive && tagDialog.mode === 'create'" 
-    v-model="tagDialog.isActive" width="600px">
+    v-model="tagDialog.isActive" width="500px">
     <tag-form-create 
       @close="tagDialog.isActive = false" 
     />
   </v-dialog>
   <v-dialog v-if="tagDialog.isActive && tagDialog.mode === 'detail'" 
-    v-model="tagDialog.isActive" width="400px">
+    v-model="tagDialog.isActive" width="500px">
     <tag-form-detail 
       :tag-id="tagDialog.tagId" 
       @close="tagDialog.isActive = false" 
