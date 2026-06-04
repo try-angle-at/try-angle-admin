@@ -2,7 +2,10 @@
     <v-container fluid>
         <v-row no-gutters class="align-item-center | justify-space-between | mt-8 | mb-2 | ml-2">
             <v-col class="title-font">
-              {{ refImgDetail.title }}
+              <v-row no-gutters class="info-row | mb-1">
+                <v-icon color="#6A7282" size="18" class="mr-1">mdi-account-outline</v-icon>
+                <span class="info-text">{{ refImgDetail.nickname }}</span>
+              </v-row>
             </v-col>
             <v-col cols="auto" class="justify-end">
                 <v-btn
@@ -17,6 +20,189 @@
                 >수정</v-btn>
 
             </v-col>
+        </v-row>
+
+        <v-row no-gutters>
+          <v-col cols="5" class="img-frame">
+            <v-img
+              v-if="refImgDetail.imgUrl"
+              :src="refImgDetail.imgUrl"
+              aspect-ratio="1"
+            />
+          </v-col>
+          <v-col cols="7" class="pl-8 | pr-4">
+            <v-row no-gutters justify="start">
+              <v-label class="ml-1">제목</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+              <v-text-field
+                  v-model="refImgDetail.title"
+                  class="inputbox"
+                  :error-messages="errorMsg.title"
+                  @update:model-value="errorMsg.title = ''"  
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+              />
+            </v-row>
+            <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">설명</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+              <v-textarea
+                  v-model="refImgDetail.desc"
+                  class="inputbox"
+                  auto-grow rows="5" row-height="5" max-rows="5"
+                  :error-messages="errorMsg.desc"
+                  @update:model-value="errorMsg.desc = ''"  
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+              />
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">이미지</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+              <v-col>
+                <v-file-input
+                  v-model="aiDoc"
+                  class="inputbox"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  placeholder="AI 정보 파일"
+                  show-size
+                  readonly
+                >
+                </v-file-input>
+              </v-col>
+              <v-col cols="auto" class="pl-2 | align-item-center">
+                <v-btn
+                  @click="handleClickBtn('downloadAiDoc')"
+                  variant="outlined" 
+                  class="small-btn | fill-grey"
+                >업로드</v-btn>
+              </v-col>
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">카테고리</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+                <v-select
+                  v-model="refImgDetail.ctgName"
+                  :items="categoryOptions"
+                  item-title="label"
+                  item-value="value"
+                  placeholder="이미지 카테고리 선택" 
+                  class="inputbox"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                />
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">이미지 태그</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+                <v-select
+                  v-model="refImgDetail.kwd"
+                  :items="tagOptions"
+                  item-title="label"
+                  item-value="value"
+                  multiple
+                  chips
+                  placeholder="이미지 태그" 
+                  class="inputbox"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                />
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">AI 정보</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+              <v-col>
+                <v-file-input
+                  v-model="aiDoc"
+                  class="inputbox"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  placeholder="AI 정보 파일"
+                  show-size
+                  readonly
+                >
+                  <template #append-inner>
+                    <v-btn
+                      @click.stop="handleClickBtn('downloadAiDoc')"
+                      variant="outlined"
+                      size="small"
+                      class="small-btn | outline-grey"
+                    >다운로드</v-btn>
+                  </template>
+                </v-file-input>
+              </v-col>
+              
+              <v-col cols="auto" class="pl-2 | align-item-center">
+                <v-btn
+                  @click="handleClickBtn('downloadAiDoc')"
+                  variant="outlined" 
+                  class="small-btn | fill-grey"
+                >데이터 뷰어</v-btn>
+              </v-col>
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1 | gap-16">
+              <v-col class="date-col">
+                <v-row no-gutters justify="start">
+                  <v-label class="ml-1">가중치</v-label>
+                </v-row>
+                <v-row no-gutters justify="center" class="mt-1">
+                  <v-text-field
+                      v-model="refImgDetail.expWeight"
+                      class="inputbox"
+                      variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  />  
+                </v-row>
+              </v-col>
+              <v-col class="date-col">
+                <v-row no-gutters justify="start">
+                  <v-label class="ml-1">우선순위</v-label>
+                </v-row>
+                <v-row no-gutters justify="center" class="mt-1">
+                  <v-text-field
+                      v-model="refImgDetail.pri"
+                      class="inputbox"
+                      variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  />
+                </v-row>
+              </v-col>
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1 | gap-16">
+              <v-col class="date-col">
+                <v-row no-gutters justify="start">
+                  <v-label class="ml-1">생성일</v-label>
+                </v-row>
+                <v-row no-gutters justify="center" class="mt-1">
+                  <v-text-field
+                      v-model="refImgDetail.cDate"
+                      class="inputbox"
+                      readonly
+                      variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  />  
+                </v-row>
+              </v-col>
+              <v-col class="date-col">
+                <v-row no-gutters justify="start">
+                  <v-label class="ml-1">수정일</v-label>
+                </v-row>
+                <v-row no-gutters justify="center" class="mt-1">
+                  <v-text-field
+                      v-model="refImgDetail.uDate"
+                      class="inputbox"
+                      readonly
+                      variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  />
+                </v-row>
+              </v-col>
+            </v-row>
+
+          </v-col>
         </v-row>
     </v-container>
 </template>
@@ -62,12 +248,19 @@ const refImgDetail = ref({
   cDate: '',
   uDate: '',
 });
-
 const aiDoc = ref(null);
 
-const categoryOptions = ref([
-  { label: '전체 카테고리', value: null },
-]);
+const errorMsg = ref({
+  expWeight: '',
+  pri: '',
+  title: '',
+  desc: '',
+  ctgName: '',
+  kwd: [],
+  imgUrl: '',
+});
+
+const categoryOptions = ref([]);
 const tagOptions = ref([]);
 const tagNameByCode = ref({});
 
@@ -128,7 +321,9 @@ async function fetchRefImgDetail() {
       desc: detail.desc || '',
       ctgName: detail.ctg?.ctgName || null,
       kwd: Array.isArray(detail.kwd)
-        ? detail.kwd.map((code) => tagNameByCode.value[code] || code)
+        ? detail.kwd
+            .map((code) => String(code || '').trim())
+            .filter(Boolean)
         : [],
       imgUrl: buildThumbnailUrl(detail.imgUrl),
       cDate: util.formatUnixDateTime(detail.cDate),
@@ -160,12 +355,10 @@ async function fetchListCategory() {
     });
 
     categoryOptions.value = [
-      { label: '전체 카테고리', value: null },
       ...Array.from(uniqueCategories.values()),
     ];
   } catch (error) {
     console.error('카테고리 옵션 조회 실패:', error);
-    categoryOptions.value = [{ label: '전체 카테고리', value: null }];
   }
 }
 
@@ -210,11 +403,6 @@ async function fetchTagCategory() {
     tagOptions.value = [
       ...Array.from(uniqueTags.values()),
     ];
-
-    tagNameByCode.value = Array.from(uniqueTags.values()).reduce((acc, tag) => {
-      acc[tag.value] = tag.label;
-      return acc;
-    }, {});
   } catch (error) {
     console.error('태그 옵션 조회 실패:', error);
     tagNameByCode.value = {};
@@ -251,20 +439,43 @@ function handleClickBtn(action, value) {
     color: #4A5565;
 }
 .fill-grey {
-    color: #ffffff;
-    background-color: #4A5565;
+    color: #ffffff !important;
+    background-color: #4A5565 !important;
+}
+.small-btn {
+  padding: 4px 8px;
+  align-items: center;
+  border-radius: 8px;
+  border: 0.7px solid #4A5565;
+  color: #4A5565;
+  letter-spacing: -0.15px;
+  font-family: Pretendard;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+
+.img-frame {
+  width: 100%;
+  padding-top: 100%;
+  position: relative;
+
+  background-color: #ffffff;
+  border: 0.7px solid #E5E8EB;
+  border-radius: 8px;
 }
 
 /* .inputbox :deep(.v-input__details) {
   padding-top: 4px !important;
 } */
-.inputbox :deep(.v-input__control) {
-    width: 240px !important;
-}
-
 .inputbox :deep(.v-field__input) {
     color: #364153 !important;
     font-size: 14px !important;
+}
+.inputbox :deep(.v-input__details .v-messages__message) {
+    color: #E53E3E !important;
+    padding-top: 0px !important;
+    height: 20px !important;
 }
 
 .inputbox :deep(.v-field__input::placeholder) {
@@ -278,6 +489,13 @@ function handleClickBtn(action, value) {
     opacity: 1;
 }
 
+:deep(.v-label) {
+  color: #4A5565;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+}
+
 .category-chip {
   background-color: #FFF4F0;
   border: 0.7px solid #FFE0D4;
@@ -289,6 +507,14 @@ function handleClickBtn(action, value) {
   background-color: #F3F4F6;
   color: #4A5565;
   font-size: 10px;
+}
+
+.gap-16 {
+  column-gap: 16px;
+}
+
+.date-col {
+  flex: 1 1 0;
 }
 
 </style>
