@@ -188,6 +188,7 @@ const categoryOptions = ref([
 
 const tagOptions = ref([
 ]);
+const tagNameByCode = ref({});
 
 const imgItems = ref([]);
 
@@ -195,8 +196,9 @@ const imgItems = ref([]);
 onMounted(() => {
   emit('show-right-btn');
   fetchListCategory();
-  fetchTagCategotry();
-  fetchListReferences();
+  fetchTagCategory().finally(() => {
+    fetchListReferences();
+  });
 });
 
 // ----- 함수 정의 ----- //
@@ -242,7 +244,9 @@ async function fetchListReferences() {
       imgUrl: buildThumbnailUrl(reference.imgUrl),
       categoryId: reference.ctg?.ctgId,
       categoryName: reference.ctg?.ctgName || '-',
-      keywordList: Array.isArray(reference.kwd) ? reference.kwd : [],
+      keywordList: Array.isArray(reference.kwd)
+        ? reference.kwd.map((code) => tagNameByCode.value[code] || code)
+        : [],
       useCnt: reference.useCnt ?? 0,
       cDate: util.formatUnixDateTime(reference.cDate),
       uDate: util.formatUnixDateTime(reference.uDate),
@@ -288,7 +292,7 @@ async function fetchListCategory() {
   }
 }
 
-async function fetchTagCategotry() {
+async function fetchTagCategory() {
   try {
     const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
       HttpHandler.listTags({
@@ -329,8 +333,14 @@ async function fetchTagCategotry() {
     tagOptions.value = [
       ...Array.from(uniqueTags.values()),
     ];
+
+    tagNameByCode.value = Array.from(uniqueTags.values()).reduce((acc, tag) => {
+      acc[tag.value] = tag.label;
+      return acc;
+    }, {});
   } catch (error) {
     console.error('태그 옵션 조회 실패:', error);
+    tagNameByCode.value = {};
   }
 }
 
