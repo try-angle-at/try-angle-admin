@@ -183,7 +183,7 @@ const isLoading = ref(false);
 const isSubmitting = ref(false);
 
 const parentCodeOptions = ref([
-  { label: '전체 상위 태그', value: null },
+  { label: '전체 태그', value: null },
 ]);
 
 const headerItems = [
@@ -282,7 +282,8 @@ async function fetchParentCodeOptions() {
     });
 
     parentCodeOptions.value = [
-      { label: '전체 상위 태그', value: null },
+      { label: '전체 태그', value: null },
+      { label: 'ROOT 태그', value: "" },
       ...Array.from(rootTagMap.values()).map((tag) => ({
         label: tag.tagName || tag.code,
         value: tag.code,
@@ -290,7 +291,7 @@ async function fetchParentCodeOptions() {
     ];
   } catch (error) {
     console.error('상위 태그 옵션 조회 실패:', error);
-    parentCodeOptions.value = [{ label: '전체 상위 태그', value: null }];
+    parentCodeOptions.value = [{ label: '전체 태그', value: null }, { label: 'ROOT 태그', value: "" }];
   }
 }
 
