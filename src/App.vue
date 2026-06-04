@@ -23,7 +23,7 @@
           v-for="page in pageList"
           :key="page.path || page.name"
           :item="page"
-          :current-path="route.path"
+          :current-path="currentSideNavPath"
         />
       </v-list>
     </v-navigation-drawer>
@@ -161,6 +161,7 @@
         @hide-top-appbar="hideTopNav"
         @hide-side-appbar="hideSideNav"
         @show-left-btn="showLeftNavBtn"
+        @set-page-cfg="setCurrentPageCfg"
       ></router-view>
     </v-main>
 
@@ -211,6 +212,7 @@ const route = useRoute(); // (추가) 현재 라우트 정보 가져오기
 // 네비게이션 표시 상태
 const showTopNav = ref(true);
 const showSideNav = ref(true);
+const currentPageCfgOverride = ref(null);
 
 const showLeftBtn = ref(false);
 const publicPages = ['/login', '/register'];
@@ -261,11 +263,19 @@ const pageList = ref([
 
 // 현재 페이지 설정 계산
 const currentPageCfg = computed(() => {
+  if (currentPageCfgOverride.value) {
+    return currentPageCfgOverride.value;
+  }
+
   const matchedPage = findPageByPath(pageList.value, route.path);
 
   return matchedPage || {
     name: '',
   };
+});
+
+const currentSideNavPath = computed(() => {
+  return currentPageCfgOverride.value?.activePath || route.path;
 });
 
 const shouldShowSideNav = computed(() => {
@@ -295,6 +305,7 @@ watch(
     showTopNav.value = true;
     showSideNav.value = true;
     showLeftBtn.value = false;
+    currentPageCfgOverride.value = null;
   }
 );
 
@@ -324,6 +335,18 @@ function hideSideNav() {
 
 function showLeftNavBtn() {
   showLeftBtn.value = true;
+}
+
+function setCurrentPageCfg(pageCfg = null) {
+  if (!pageCfg || typeof pageCfg !== 'object') {
+    currentPageCfgOverride.value = null;
+    return;
+  }
+
+  currentPageCfgOverride.value = {
+    name: pageCfg.name || '',
+    activePath: pageCfg.activePath || '',
+  };
 }
 
 function findPageByPath(pages, targetPath) {

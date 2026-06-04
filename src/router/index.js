@@ -41,14 +41,15 @@ const routes = [
     component: () => import(/* webpackChunkName: "ref-img-list" */ "@/pages/RefImg/RefImgList.vue")
   },
   {
-    path: '/ref-images/:id',
-    name: 'RefImgDetail',
-    component: () => import(/* webpackChunkName: "ref-img-detail" */ "@/pages/RefImg/RefImgDetail.vue")
-  },
-  {
     path: '/ref-images/create',
     name: 'RefImgCreate',
     component: () => import(/* webpackChunkName: "ref-img-create" */ "@/pages/RefImg/RefImgCreate.vue")
+  },
+  {
+    path: '/ref-images/:id',
+    name: 'RefImgDetail',
+    props: (route) => ({ refImgId: route.params.id }),
+    component: () => import(/* webpackChunkName: "ref-img-detail" */ "@/pages/RefImg/RefImgDetail.vue")
   },
   {
     path: '/products',
