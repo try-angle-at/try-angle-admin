@@ -47,8 +47,8 @@ const routes = [
   },
   {
     path: '/ref-images/create',
-    name: 'RefImgForm',
-    component: () => import(/* webpackChunkName: "ref-img-form" */ "@/pages/RefImg/RefImgForm.vue")
+    name: 'RefImgCreate',
+    component: () => import(/* webpackChunkName: "ref-img-create" */ "@/pages/RefImg/RefImgCreate.vue")
   },
   {
     path: '/products',
