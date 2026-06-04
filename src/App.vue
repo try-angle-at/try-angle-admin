@@ -10,7 +10,7 @@
       <v-col cols="auto" class="pl-5 | side-nav-header">
         <v-img
           src="@/assets/title.png"
-          alt="Fooding Logo"
+          alt="TryAngle Logo"
           contain width="200"
           @click="handleClickBtn('goToHome')"
         />
@@ -42,12 +42,50 @@
           </v-col>
 
           <v-col cols="auto" class="pr-2">
-            <v-btn
-              icon="$cus-profile" 
-              variant="outlined" density="comfortable" rounded="circle"
-              class="profileIcon"
-              @click="handleClickBtn('goToMypage')"
-            ></v-btn>
+            <v-menu location="bottom end" :close-on-content-click="true">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="$cus-profile"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="circle"
+                  class="profileIcon"
+                ></v-btn>
+              </template>
+
+              <v-row
+                no-gutters
+                class="menu-container | justify-center | elevation-2"
+              >
+                <v-col cols="12" class="justify-start">
+                  <v-btn
+                    variant="text"
+                    color="#364153" class="menu-btn | border-radius-top"
+                    @click="handleClickBtn('goToProfile')"
+                    block
+                  >
+                    <template v-slot:prepend>
+                      <v-icon color="#364153" size="large" icon="mdi-account-outline" class="ml-1"/>
+                      <v-col>프로필 편집</v-col>
+                    </template>
+                  </v-btn>
+                </v-col>
+                <v-col cols="12" class="justify-start">
+                  <v-btn
+                    variant="text"
+                    color="#FB2C36" class="menu-btn | red-text | border-radius-bottom"
+                    @click="handleClickBtn('logout')"
+                    block
+                  >
+                    <template v-slot:prepend>
+                      <v-icon color="#FB2C36" size="large" icon="mdi-logout" class="ml-1"/>
+                      <v-col>로그아웃</v-col>
+                    </template>
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-menu>
           </v-col>
         </template>
 
@@ -66,12 +104,50 @@
           </v-col>
 
           <v-col cols="auto" class="pr-2">
-            <v-btn
-              icon="$cus-profile" 
-              variant="outlined" density="comfortable" rounded="circle"
-              class="profileIcon"
-              @click="handleClickBtn('goToMypage')"
-            ></v-btn>
+            <v-menu location="bottom end" :close-on-content-click="true">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="$cus-profile"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="circle"
+                  class="profileIcon"
+                ></v-btn>
+              </template>
+
+              <v-row
+                no-gutters
+                class="menu-container | justify-center | elevation-2"
+              >
+                <v-col cols="12" class="justify-start">
+                  <v-btn
+                    variant="text"
+                    color="#364153" class="menu-btn | border-radius-top"
+                    @click="handleClickBtn('goToProfile')"
+                    block
+                  >
+                    <template v-slot:prepend>
+                      <v-icon color="#364153" size="large" icon="mdi-account-outline" class="ml-1"/>
+                      <v-col>프로필 편집</v-col>
+                    </template>
+                  </v-btn>
+                </v-col>
+                <v-col cols="12" class="justify-start">
+                  <v-btn
+                    variant="text"
+                    color="#FB2C36" class="menu-btn | red-text | border-radius-bottom"
+                    @click="handleClickBtn('logout')"
+                    block
+                  >
+                    <template v-slot:prepend>
+                      <v-icon color="#FB2C36" size="large" icon="mdi-logout" class="ml-1"/>
+                      <v-col>로그아웃</v-col>
+                    </template>
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-menu>
           </v-col>
         </template>
       </v-row>
@@ -115,7 +191,7 @@
       </v-card-text>
 
       <template v-slot:actions>
-          <v-btn class="active-btn" style="border-radius: 16px;" variant="outlined" @click="dialog.okButton" :loading="isSubmitting">{{ dialog.okText }}</v-btn>
+          <v-btn class="active-thin-btn" style="border-radius: 16px;" variant="outlined" @click="dialog.okButton" :loading="isSubmitting">{{ dialog.okText }}</v-btn>
       </template>
     </v-card>
   </v-dialog>
@@ -300,8 +376,22 @@ function handleClickBtn(action) {
       navigateTo(router, '/');
       break;
 
-    case 'goToMypage':
-      navigateTo(router, '/user');
+    case 'logout':
+      openDialog(
+        '로그아웃',
+        '정말 로그아웃 하시겠습니까?',
+        () => {
+          dialog.value.isActive = false;
+          logout();
+          navigateTo(router, '/login');
+        },
+        false,
+        '확인'
+      );
+      break;
+
+    case 'openMyMenu':
+
       break;
 
     case 'goToBack':
@@ -367,5 +457,36 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
   border-radius: 50% !important;
   z-index: 100;
 }
+
+.menu-container {
+  position: relative;
+  width: 164px;
+  border-radius: 16px;
+  z-index: 10;
+}
+.menu-btn {
+  min-height: 56px; 
+  border: 0.7px solid #F3F4F6;
+  background-color: #FFFFFF;
+  color: #364153;
+  
+  justify-content: space-between;
+
+  font-size: 15px;
+  letter-spacing: -0.2px;
+
+  overflow: hidden;
+}
+
+.border-radius-top {
+  border-radius: 16px 16px 0px 0px;
+}
+.border-radius-bottom {
+  border-radius: 0px 0px 16px 16px;
+}
+.red-text {
+  color: #FB2C36;
+}
+
 
 </style>
