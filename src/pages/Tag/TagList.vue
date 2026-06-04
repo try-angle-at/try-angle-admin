@@ -261,8 +261,7 @@ async function fetchListTags() {
 async function fetchParentCodeOptions() {
   try {
     const response = await HttpHandler.listTags({
-      page: 1,
-      limit: 100,
+      page: 0,
       parentCode: '',
       tagName: null,
     });

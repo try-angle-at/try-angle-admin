@@ -262,7 +262,7 @@ async function fetchListReferences() {
 
 async function fetchListCategory() {
   try {
-    const categoryResponse = await HttpHandler.listCategories({ page: 1, limit: 20 });
+    const categoryResponse = await HttpHandler.listCategories({ page: 0 });
     const categoryItems = categoryResponse?.data?.items || [];
 
     const uniqueCategories = new Map();
@@ -290,24 +290,28 @@ async function fetchListCategory() {
 
 async function fetchTagCategotry() {
   try {
-    const [moodTagResponse, clothTagResponse] = await Promise.all([
+    const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
       HttpHandler.listTags({
-        page: 1,
-        limit: 20,
+        page: 0,
         parentCode: 'MOOD_ROOT',
         tagName: null,
       }),
       HttpHandler.listTags({
-        page: 1,
-        limit: 20,
+        page: 0,
         parentCode: 'CLOTH_ROOT',
+        tagName: null,
+      }),
+      HttpHandler.listTags({
+        page: 0,
+        parentCode: 'SHOT_ROOT',
         tagName: null,
       }),
     ]);
 
     const moodTagItems = moodTagResponse?.data?.items || [];
     const clothTagItems = clothTagResponse?.data?.items || [];
-    const tagItems = [...moodTagItems, ...clothTagItems];
+    const shotTagItems = shotTagResponse?.data?.items || [];
+    const tagItems = [...moodTagItems, ...clothTagItems, ...shotTagItems];
     const uniqueTags = new Map();
 
     tagItems.forEach((tag = {}) => {

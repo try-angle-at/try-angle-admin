@@ -139,7 +139,7 @@ const errorMsg = ref({
 });
 
 const parentCodeOptions = ref([
-  { label: '전체 상위 태그', value: null },
+  { label: 'ROOT 태그', value: null },
 ]);
 
 
@@ -186,7 +186,7 @@ async function fetchParentCodeOptions() {
     });
 
     parentCodeOptions.value = [
-      { label: '전체 상위 태그', value: null },
+      { label: 'ROOT 태그', value: null },
       ...Array.from(rootTagMap.values()).map((tag) => ({
         label: tag.tagName || tag.code,
         value: tag.code,
@@ -194,7 +194,7 @@ async function fetchParentCodeOptions() {
     ];
   } catch (error) {
     console.error('상위 태그 옵션 조회 실패:', error);
-    parentCodeOptions.value = [{ label: '전체 상위 태그', value: null }];
+    parentCodeOptions.value = [{ label: 'ROOT 태그', value: null }];
   }
 }
 
