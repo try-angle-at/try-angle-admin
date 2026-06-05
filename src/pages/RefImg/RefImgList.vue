@@ -146,6 +146,34 @@
 
             </v-col>
           </template>
+          <v-row no-gutters class="data-table-footer">
+            <v-col class="data-table-footer__items-per-page">
+              <v-col cols="auto" class="items-per-page-label">display</v-col>
+              <v-select
+                class="items-per-page-select"
+                :model-value="pageNation.limit"
+                :items="itemsPerPageOptions"
+                density="compact"
+                hide-details
+                variant="outlined"
+                @update:model-value="handleItemsPerPageUpdate"
+              />
+            </v-col>
+
+            <v-pagination
+              class="table-pagination"
+              :model-value="pageNation.current"
+              :length="paginationLength"
+              :total-visible="5"
+              density="comfortable"
+              rounded="circle"
+              active-color="#101828"
+              color="#6B7280"
+              prev-icon="mdi-chevron-left"
+              next-icon="mdi-chevron-right"
+              @update:model-value="handlePageUpdate"
+            />
+          </v-row>
         </v-row>
 
     </v-container>
@@ -154,7 +182,7 @@
 
 <script setup>
 // ----- 선언부 ----- //
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
@@ -168,6 +196,8 @@ const router = useRouter();
 const util = Util.getInstance();
 const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, '');
 
+const itemsPerPageOptions = [12, 24, 36, 48];
+
 const search = ref({
   keyword: '',
   ctgId: null,
@@ -176,7 +206,7 @@ const search = ref({
 
 const pageNation = ref({
   current: 1,
-  limit: 10,
+  limit: 12,
 });
 
 const totalCount = ref(0);
@@ -191,6 +221,14 @@ const tagOptions = ref([
 const tagNameByCode = ref({});
 
 const imgItems = ref([]);
+const paginationLength = computed(() => {
+  const perPage = Number(pageNation.value.limit) || 0;
+  if (perPage <= 0) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(totalCount.value / perPage));
+});
 
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
@@ -381,6 +419,17 @@ function handleRowClick({ item }) {
   handleClickBtn('goToDetail', row.id);
 }
 
+
+function handlePageUpdate(value) {
+  const nextPage = Number(value) || 1;
+  handlePageChange(nextPage);
+}
+
+function handleItemsPerPageUpdate(value) {
+  const normalizedValue = Number(value) || pageNation.value.limit;
+  handleItemsPerPageChange(normalizedValue);
+}
+
 function handlePageChange(nextPage) {
   pageNation.value.current = nextPage;
   fetchListReferences();
@@ -555,4 +604,45 @@ function handleItemsPerPageChange(limit) {
   font-size: 12px;
   font-weight: 500;
 }
+
+.data-table-footer {
+  border-top: 1px solid #F3F4F6;
+  background-color: #FFFFFF;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 56px;
+}
+
+.data-table-footer__items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1;
+  margin-left: 16px;
+  justify-self: start;
+}
+
+.items-per-page-label {
+  color: #6A7282;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.items-per-page-select {
+  max-width: 100px;
+}
+
+.table-pagination {
+  grid-column: 2;
+  justify-self: center;
+}
+
+.table-pagination :deep(.v-btn) {
+  box-shadow: none;
+  min-width: 32px;
+  font-weight: 400;
+}
+
 </style>
