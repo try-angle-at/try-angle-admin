@@ -346,6 +346,7 @@ function setCurrentPageCfg(pageCfg = null) {
   currentPageCfgOverride.value = {
     name: pageCfg.name || '',
     activePath: pageCfg.activePath || '',
+    backPath: pageCfg.backPath || '',
   };
 }
 
@@ -418,7 +419,7 @@ function handleClickBtn(action) {
       break;
 
     case 'goToBack':
-      goBack(router);
+      goBack(router, currentPageCfg.value?.backPath || currentPageCfg.value?.activePath || '/');
       break;
 
     default:

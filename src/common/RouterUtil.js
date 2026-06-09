@@ -15,16 +15,30 @@ export function navigateTo(router, path, query = null) {
 }
 
 /**
- * 이전에 방문한 페이지로 돌아가는 유틸리티 함수
+ * 이전에 방문한 페이지로 돌아가되 히스토리가 없으면 fallback 경로로 이동
  * @param {object} router Vue Router 인스턴스 (useRouter()의 반환 값)
+ * @param {string|null} fallbackPath 히스토리가 없을 때 이동할 경로
  */
-export function goBack(router) {
-  if (router) {
+export function goBack(router, fallbackPath = null) {
+  if (!router) {
+    console.error("[Router Util] Router 인스턴스가 유효하지 않습니다.");
+    return;
+  }
+
+  const hasHistory = typeof window !== 'undefined' && window.history.length > 1;
+  if (hasHistory) {
     console.log('[Router Util] Going back to previous page');
     router.back();
-  } else {
-    console.error("[Router Util] Router 인스턴스가 유효하지 않습니다.");
+    return;
   }
+
+  if (fallbackPath) {
+    console.log(`[Router Util] No history. Navigating to fallback: ${fallbackPath}`);
+    router.push(fallbackPath);
+    return;
+  }
+
+  console.warn('[Router Util] No history and no fallbackPath provided.');
 }
 
 /**
