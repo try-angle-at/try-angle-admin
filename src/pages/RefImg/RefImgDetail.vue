@@ -14,7 +14,7 @@
                   class="thin-btn | outline-grey | btn-width | mr-2"
                 >삭제</v-btn>
                 <v-btn
-                  @click="handleClickBtn('edit')"
+                  @click="handleClickBtn('update')"
                   variant="outlined"
                   class="thin-btn | fill-grey | btn-width"
                 >수정</v-btn>
@@ -285,6 +285,7 @@ const refImgDetail = ref({
 });
 
 const aiDoc = ref(null);
+const isSubmitting = ref(false);
 
 const imageFileName = computed(() => {
   const url = refImgDetail.value.imgUrl;
@@ -364,6 +365,95 @@ function buildThumbnailUrl(path) {
 
   const relativePath = normalizedPath.replace(/^\/+/, '');
   return imageBaseUrl ? `${imageBaseUrl}/${relativePath}` : `/${relativePath}`;
+}
+
+
+async function updateRefImg() {
+  const refImgId = Number(props.refImgId);
+  if (!refImgId) {
+    openDialog(
+      '수정 실패',
+      '레퍼런스 이미지 ID가 올바르지 않습니다.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
+    return;
+  }
+
+  if (isSubmitting.value) {
+    return;
+  }
+
+  isSubmitting.value = true;
+
+  try {
+    const response = await HttpHandler.updateReference({
+      id: refImgId,
+      title: refImgDetail.value.title?.trim() || '',
+      desc: refImgDetail.value.desc?.trim() || '',
+      ctgId: refImgDetail.value.ctgId,
+      imgUrl: refImgDetail.value.imgUrl || null,
+      kwd: Array.isArray(refImgDetail.value.kwd) ? refImgDetail.value.kwd : null,
+      aiDoc: aiDoc.value,
+      expWeight: refImgDetail.value.expWeight,
+      pri: refImgDetail.value.pri,
+    });
+
+    const statusCode = response?.status?.code;
+    if (statusCode && statusCode !== 'S0000') {
+      throw new Error(response?.status?.msg || '레퍼런스 이미지 수정에 실패했습니다.');
+    }
+
+    const detail = response?.data || {};
+    refImgDetail.value = {
+      id: detail.imgId ?? refImgDetail.value.id,
+      nickname: detail.user?.nickname || refImgDetail.value.nickname || '',
+      useCnt: detail.useCnt ?? refImgDetail.value.useCnt ?? 0,
+      expWeight: detail.expWeight ?? refImgDetail.value.expWeight ?? null,
+      pri: detail.pri ?? refImgDetail.value.pri ?? null,
+      title: detail.title || refImgDetail.value.title || '',
+      desc: detail.desc || refImgDetail.value.desc || '',
+      ctgId: detail.ctg?.ctgId ?? refImgDetail.value.ctgId ?? null,
+      ctgName: detail.ctg?.ctgName || refImgDetail.value.ctgName || null,
+      kwd: Array.isArray(detail.kwd)
+        ? detail.kwd.map((code) => String(code || '').trim()).filter(Boolean)
+        : Array.isArray(refImgDetail.value.kwd)
+          ? refImgDetail.value.kwd
+          : [],
+      imgUrl: buildThumbnailUrl(detail.imgUrl) || refImgDetail.value.imgUrl || '',
+      cDate: util.formatUnixDateTime(detail.cDate || refImgDetail.value.cDate),
+      uDate: util.formatUnixDateTime(detail.uDate || refImgDetail.value.uDate),
+    };
+
+    aiDoc.value = detail.aiDoc ?? aiDoc.value;
+
+    openDialog(
+      '수정 완료',
+      '레퍼런스 이미지가 수정되었습니다.',
+      () => {
+        dialog.value.isActive = false;
+        emit('close');
+      },
+      true,
+      '확인'
+    );
+  } catch (error) {
+    console.error('레퍼런스 이미지 수정 실패:', error);
+    openDialog(
+      '수정 실패',
+      error?.message || '레퍼런스 이미지 수정 중 오류가 발생했습니다.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 async function fetchRefImgDetail() {
@@ -486,9 +576,19 @@ async function fetchTagCategory() {
 
 function handleClickBtn(action, value) {
   switch (action) {
-    case 'edit':
-      navigateTo(router, '/ref-images/create');
+    case 'update':
+      openDialog(
+        '수정 확인',
+        '현재 내용을 저장하시겠습니까?',
+        () => {
+          dialog.value.isActive = false;
+          updateRefImg();
+        },
+        false,
+        '저장'
+      );
       break;
+
     case 'delete': 
       {
         const targetRefId = refImgDetail.value.id ?? props.refImgId;
