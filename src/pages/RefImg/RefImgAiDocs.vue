@@ -18,14 +18,16 @@
       <div class="viewer-layout">
         <section class="canvas-panel">
           <div v-if="props.imagePath" class="canvas-stage">
-            <img
-              ref="imageRef"
-              :src="props.imagePath"
-              class="canvas-image-native"
-              alt="reference"
-              @load="handleImageLoad"
-            />
-            <canvas ref="overlayRef" class="overlay-canvas" />
+            <div class="image-overlay-wrap">
+              <img
+                ref="imageRef"
+                :src="props.imagePath"
+                class="canvas-image-native"
+                alt="reference"
+                @load="handleImageLoad"
+              />
+              <canvas ref="overlayRef" class="overlay-canvas" />
+            </div>
           </div>
           <div v-else class="canvas-empty">이미지 없음</div>
 
@@ -105,6 +107,47 @@ const COCO17_CONNECTIONS = [
   [5, 11], [6, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
 ];
 
+const FOOT_CONNECTIONS = [
+  [15, 17], [17, 18], [15, 19], [16, 20], [20, 21], [16, 22],
+];
+
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [0, 9], [9, 10], [10, 11], [11, 12],
+  [0, 13], [13, 14], [14, 15], [15, 16],
+  [0, 17], [17, 18], [18, 19], [19, 20],
+];
+
+const FACE_CONNECTIONS = (() => {
+  const connections = [];
+  for (let i = 23; i < 39; i += 1) connections.push([i, i + 1]);
+  for (let i = 40; i < 44; i += 1) connections.push([i, i + 1]);
+  for (let i = 45; i < 49; i += 1) connections.push([i, i + 1]);
+  for (let i = 50; i < 53; i += 1) connections.push([i, i + 1]);
+  for (let i = 54; i < 58; i += 1) connections.push([i, i + 1]);
+  connections.push([53, 54]);
+  for (let i = 59; i < 64; i += 1) connections.push([i, i + 1]);
+  connections.push([64, 59]);
+  for (let i = 65; i < 70; i += 1) connections.push([i, i + 1]);
+  connections.push([70, 65]);
+  for (let i = 71; i < 82; i += 1) connections.push([i, i + 1]);
+  connections.push([82, 71]);
+  for (let i = 83; i < 90; i += 1) connections.push([i, i + 1]);
+  connections.push([90, 83]);
+  return connections;
+})();
+
+const LEFT_HAND_CONNECTIONS = HAND_CONNECTIONS.map(([a, b]) => [91 + a, 91 + b]);
+const RIGHT_HAND_CONNECTIONS = HAND_CONNECTIONS.map(([a, b]) => [112 + a, 112 + b]);
+
+const GROUP_COLORS = {
+  body: '#00B7FF',
+  foot: '#34D399',
+  face: '#A78BFA',
+  hand: '#FB923C',
+};
+
 const decodeHex = (hex) => {
   const value = Number.parseInt(hex, 16);
   if (!Number.isFinite(value)) {
@@ -168,6 +211,13 @@ const parseBboxHex = (bboxHex) => {
 };
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const getGroupByIndex = (index) => {
+  if (index <= 16) return 'body';
+  if (index <= 22) return 'foot';
+  if (index <= 90) return 'face';
+  return 'hand';
+};
 
 const normalizeKpsIntoBbox = (points, bbox) => {
   const hasOutOfRange = points.some((point) => (
@@ -315,8 +365,8 @@ const poseOverlay = computed(() => {
   if (source.pose) {
     const bbox = parseBboxHex(source.pose.bbox);
     const fromKpt17 = parseKpt17(source.pose.kpt17);
-    const fromHex = parsePoseKpHex(source.pose.kp).slice(0, 17);
-    const points = fromKpt17.length ? fromKpt17 : fromHex;
+    const fromHex = parsePoseKpHex(source.pose.kp);
+    const points = fromHex.length ? fromHex : fromKpt17;
 
     if (!points.length) {
       return null;
@@ -336,28 +386,15 @@ const poseOverlay = computed(() => {
   }
 
   const bbox = parseBboxHex(bboxHex);
-  const points = parsePoseKpHex(poseKpHex).slice(0, poseCount || 17);
-  const points17 = points.slice(0, 17);
-  if (!points17.length) {
+  const points = parsePoseKpHex(poseKpHex).slice(0, poseCount || undefined);
+  if (!points.length) {
     return null;
   }
 
   return {
-    points: normalizeKpsIntoBbox(points17, bbox),
+    points: normalizeKpsIntoBbox(points, bbox),
     bbox,
   };
-});
-
-const prettyAiDocs = computed(() => {
-  if (parsedAiDocs.value) {
-    return JSON.stringify(parsedAiDocs.value, null, 2);
-  }
-
-  if (props.aiDocs) {
-    return props.aiDocs;
-  }
-
-  return '{}';
 });
 
 const toFixed = (value, digits = 2, fallback = '—') => {
@@ -464,32 +501,42 @@ const drawSkeleton = () => {
     context.restore();
   }
 
-  context.save();
-  COCO17_CONNECTIONS.forEach(([startIdx, endIdx]) => {
-    const start = points[startIdx];
-    const end = points[endIdx];
-    if (!start || !end) {
-      return;
-    }
+  const drawConnections = (connections, color, widthValue) => {
+    connections.forEach(([startIdx, endIdx]) => {
+      const start = points[startIdx];
+      const end = points[endIdx];
+      if (!start || !end) {
+        return;
+      }
 
-    const lineAlpha = Math.min(start.conf ?? 0, end.conf ?? 0);
-    context.globalAlpha = lineAlpha < threshold ? 0.08 : clamp(lineAlpha, 0.2, 1);
-    context.strokeStyle = '#00B7FF';
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(start.x * width, start.y * height);
-    context.lineTo(end.x * width, end.y * height);
-    context.stroke();
-  });
+      const lineAlpha = Math.min(start.conf ?? 0, end.conf ?? 0);
+      context.globalAlpha = lineAlpha < threshold ? 0.08 : clamp(lineAlpha, 0.2, 1);
+      context.strokeStyle = color;
+      context.lineWidth = widthValue;
+      context.beginPath();
+      context.moveTo(start.x * width, start.y * height);
+      context.lineTo(end.x * width, end.y * height);
+      context.stroke();
+    });
+  };
+
+  context.save();
+  drawConnections(COCO17_CONNECTIONS, GROUP_COLORS.body, 2);
+  drawConnections(FOOT_CONNECTIONS, GROUP_COLORS.foot, 1.8);
+  drawConnections(FACE_CONNECTIONS, GROUP_COLORS.face, 1.0);
+  drawConnections(LEFT_HAND_CONNECTIONS, GROUP_COLORS.hand, 1.4);
+  drawConnections(RIGHT_HAND_CONNECTIONS, GROUP_COLORS.hand, 1.4);
   context.restore();
 
   context.save();
-  points.forEach((point) => {
+  points.forEach((point, index) => {
+    const group = getGroupByIndex(index);
+    const radius = group === 'body' ? 3.5 : (group === 'foot' ? 3 : 2);
     const alpha = Number(point.conf ?? 0);
     context.globalAlpha = alpha < threshold ? 0.15 : clamp(alpha, 0.25, 1);
-    context.fillStyle = '#34D399';
+    context.fillStyle = GROUP_COLORS[group];
     context.beginPath();
-    context.arc(point.x * width, point.y * height, 3.5, 0, Math.PI * 2);
+    context.arc(point.x * width, point.y * height, radius, 0, Math.PI * 2);
     context.fill();
   });
   context.restore();
@@ -572,13 +619,20 @@ watch(
 }
 
 .canvas-stage {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
   min-height: 0;
+}
+
+.image-overlay-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  max-height: 100%;
+  line-height: 0;
 }
 
 .canvas-image-native {
