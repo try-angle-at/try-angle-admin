@@ -61,24 +61,12 @@
               <v-label class="ml-1">이미지</v-label>
             </v-row>
             <v-row no-gutters justify="center" class="mt-1">
-              <v-col>
-                <v-file-input
-                  v-model="aiDoc"
-                  class="inputbox"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  placeholder="AI 정보 파일"
-                  show-size
-                  readonly
-                >
-                </v-file-input>
-              </v-col>
-              <v-col cols="auto" class="pl-2 | align-item-center">
-                <v-btn
-                  @click="handleClickBtn('downloadAiDoc')"
-                  variant="outlined" 
-                  class="small-btn | fill-grey"
-                >업로드</v-btn>
-              </v-col>
+              <v-text-field
+                :model-value="imageFileName"
+                class="inputbox"
+                readonly
+                variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+              />
             </v-row>
 
             <v-row no-gutters justify="start" class="mt-1">
@@ -86,7 +74,7 @@
             </v-row>
             <v-row no-gutters justify="center" class="mt-1">
                 <v-select
-                  v-model="refImgDetail.ctgName"
+                  v-model="refImgDetail.ctgId"
                   :items="categoryOptions"
                   item-title="label"
                   item-value="value"
@@ -118,13 +106,12 @@
             </v-row>
             <v-row no-gutters justify="center" class="mt-1">
               <v-col>
-                <v-file-input
-                  v-model="aiDoc"
+                <v-textarea
+                  :model-value="aiDocText"
                   class="inputbox"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  placeholder="AI 정보 파일"
-                  show-size
                   readonly
+                  auto-grow rows="5" max-rows="7"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
                 >
                   <template #append-inner>
                     <v-btn
@@ -134,12 +121,12 @@
                       class="small-btn | outline-grey"
                     >다운로드</v-btn>
                   </template>
-                </v-file-input>
+                </v-textarea>
               </v-col>
               
               <v-col cols="auto" class="pl-2 | align-item-center">
                 <v-btn
-                  @click="handleClickBtn('downloadAiDoc')"
+                  @click="handleClickBtn('viewAiDoc')"
                   variant="outlined" 
                   class="small-btn | fill-grey"
                 >데이터 뷰어</v-btn>
@@ -210,7 +197,7 @@
 
 <script setup>
 // ----- 선언부 ----- //
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
@@ -242,6 +229,7 @@ const refImgDetail = ref({
   pri: null,
   title: '',
   desc: '',
+  ctgId: null,
   ctgName: null,
   kwd: [],
   imgUrl: '',
@@ -249,6 +237,27 @@ const refImgDetail = ref({
   uDate: '',
 });
 const aiDoc = ref(null);
+const imageFileName = computed(() => {
+  const url = refImgDetail.value.imgUrl;
+  if (!url) {
+    return '';
+  }
+
+  const cleanedUrl = String(url).split('?')[0].split('#')[0];
+  const parts = cleanedUrl.split('/').filter(Boolean);
+  return parts[parts.length - 1] || cleanedUrl;
+});
+const aiDocText = computed(() => {
+  if (!aiDoc.value) {
+    return '';
+  }
+
+  try {
+    return JSON.stringify(aiDoc.value, null, 2);
+  } catch (error) {
+    return String(aiDoc.value);
+  }
+});
 
 const errorMsg = ref({
   expWeight: '',
@@ -271,6 +280,7 @@ onMounted(() => {
   emit('set-page-cfg', {
     name: '레퍼런스 이미지 상세',
     activePath: '/ref-images',
+    backPath: '/ref-images',
   });
 
   fetchListCategory();
@@ -309,6 +319,11 @@ async function fetchRefImgDetail() {
       id: props.refImgId,
     });
 
+    const statusCode = response?.status?.code;
+    if (statusCode && statusCode !== 'S0000') {
+      throw new Error(response?.status?.msg || '레퍼런스 상세 조회에 실패했습니다.');
+    }
+
     const detail = response?.data || {};
 
     refImgDetail.value = {
@@ -319,6 +334,7 @@ async function fetchRefImgDetail() {
       pri: detail.pri ?? null,
       title: detail.title || '',
       desc: detail.desc || '',
+      ctgId: detail.ctg?.ctgId ?? null,
       ctgName: detail.ctg?.ctgName || null,
       kwd: Array.isArray(detail.kwd)
         ? detail.kwd
@@ -343,14 +359,14 @@ async function fetchListCategory() {
 
     const uniqueCategories = new Map();
     categoryItems.forEach((category = {}) => {
-      const id = category.id;
+      const id = category.id ?? category.ctgId;
       if (id === undefined || id === null || uniqueCategories.has(id)) {
         return;
       }
 
       uniqueCategories.set(id, {
         value: id,
-        label: category.name || String(id),
+        label: category.name || category.ctgName || String(id),
       });
     });
 
@@ -420,9 +436,52 @@ function handleClickBtn(action, value) {
       navigateTo(router, '/ref-images/create');
       break;
 
+    case 'downloadAiDoc':
+      downloadAiDoc();
+      break;
+
+    case 'viewAiDoc':
+      viewAiDoc();
+      break;
+
     default:
       console.error('알 수 없는 인증 액션 타입:', action);
   }
+}
+
+function downloadAiDoc() {
+  if (!aiDoc.value) {
+    return;
+  }
+
+  const blob = new Blob([aiDocText.value], { type: 'application/json;charset=utf-8' });
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = `ref-ai-doc-${refImgDetail.value.id || 'detail'}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(downloadUrl);
+}
+
+function viewAiDoc() {
+  if (!aiDoc.value) {
+    return;
+  }
+
+  const newWindow = window.open('', '_blank');
+  if (!newWindow) {
+    return;
+  }
+
+  const escaped = aiDocText.value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  newWindow.document.write(`<pre>${escaped}</pre>`);
+  newWindow.document.close();
 }
 </script> 
 

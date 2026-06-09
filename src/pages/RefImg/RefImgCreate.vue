@@ -48,6 +48,7 @@ onMounted(() => {
   emit('set-page-cfg', {
     name: '레퍼런스 이미지 등록',
     activePath: '/ref-images',
+    backPath: '/ref-images',
   });
 
   fetchListCategory();
