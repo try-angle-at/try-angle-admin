@@ -83,7 +83,7 @@
             <v-col
               v-for="item in imgItems"
               :key="item.id" 
-              cols="12" sm="6" md="4" lg="2" xl="2" class="px-1 | pb-2"
+              cols="12" sm="6" md="4" lg="2" xl="2" class="refimg-col | px-1 | pb-2"
             >
               <v-card
                 class="gallery-card"
@@ -196,7 +196,7 @@ const router = useRouter();
 const util = Util.getInstance();
 const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, '');
 
-const itemsPerPageOptions = [12, 24, 36, 48];
+const itemsPerPageOptions = [10, 20, 30, 40];
 
 const search = ref({
   keyword: '',
@@ -206,7 +206,7 @@ const search = ref({
 
 const pageNation = ref({
   current: 1,
-  limit: 12,
+  limit: 10,
 });
 
 const totalCount = ref(0);
