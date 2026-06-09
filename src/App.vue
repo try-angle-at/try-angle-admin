@@ -223,9 +223,9 @@ const pageList = ref([
     name: '데이터 관리',
     child: [
       {
-        page: 'RealtimeList',
-        name: '실시간 로그 데이터 목록',
-        path: '/dashboard/realtime-list',
+        page: 'SysList',
+        name: '시스템 모니터링',
+        path: '/system',
       },
       {
         page: 'TagList',

@@ -67,6 +67,16 @@ const routes = [
     component: () => import(/* webpackChunkName: "prod-form" */ "@/pages/Product/ProdForm.vue")
   },
   {
+    path: '/system',
+    name: 'SysList',
+    component: () => import(/* webpackChunkName: "sys-list" */ "@/pages/System/SysList.vue")
+  },
+  {
+    path: '/system/:id',
+    name: 'SysDetail',
+    component: () => import(/* webpackChunkName: "sys-detail" */ "@/pages/System/SysDetail.vue")
+  },
+  {
     path: '/snaps',
     name: 'SnapList',
     component: () => import(/* webpackChunkName: "snap-list" */ "@/pages/Snap/SnapList.vue")
