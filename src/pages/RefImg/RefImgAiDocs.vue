@@ -1,5 +1,5 @@
 <template>
-  <v-card style="padding: 24px 16px; border-radius: 24px;">
+  <v-card class="viewer-card" style="padding: 24px 16px; border-radius: 24px;">
     <v-btn
       icon="mdi-close"
       variant="text"
@@ -9,12 +9,12 @@
     />
 
     <v-card-title>
-      <v-row no-gutters class="align-center | justify-center | mt-3 | viewer-title">
+      <v-row no-gutters class="align-center | justify-center | viewer-title">
         {{ props.title || 'AI 데이터 뷰어' }}
       </v-row>
     </v-card-title>
 
-    <v-card-text style="padding: 0px 8px;">
+    <v-card-text class="viewer-body">
       <div class="viewer-layout">
         <section class="canvas-panel">
           <div v-if="props.imagePath" class="canvas-stage">
@@ -48,8 +48,10 @@
         </section>
 
         <aside class="right-panel">
-          <div class="panel-section">
-            <v-label>분석 점수</v-label>
+          <v-row no-gutters class="panel-section">
+            <v-col cols="12">
+              <v-label>분석 점수</v-label>
+            </v-col>
             <div class="score-row">
               <div class="score-big">{{ displayOverallScore }}</div>
               <div class="score-meta">overall score</div>
@@ -57,20 +59,17 @@
             <div class="score-track">
               <div class="score-fill" :style="{ width: scorePercent }" />
             </div>
-          </div>
+          </v-row>
 
-          <div class="panel-section">
-            <v-label>카메라 정보</v-label>
+          <v-row no-gutters class="panel-section">
+            <v-col cols="12">
+              <v-label>카메라</v-label>
+            </v-col>
             <div class="metric"><span>camera angle</span><strong>{{ displayCamAngle }}</strong></div>
             <div class="metric"><span>focal type</span><strong>{{ displayLensType }}</strong></div>
             <div class="metric"><span>image size</span><strong>{{ displayImageSize }}</strong></div>
             <div class="metric"><span>bbox</span><strong class="mono">{{ displayBbox }}</strong></div>
-          </div>
-
-          <div class="panel-section">
-            <v-label>원본 AI JSON</v-label>
-            <pre class="json-box">{{ prettyAiDocs }}</pre>
-          </div>
+          </v-row>
         </aside>
       </div>
     </v-card-text>
@@ -531,6 +530,17 @@ watch(
   z-index: 20;
 }
 
+.viewer-card {
+  display: flex;
+  flex-direction: column;
+  height: min(88vh, 920px);
+}
+
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+}
+
 .viewer-title {
   color: #364153;
   font-size: 18px;
@@ -541,6 +551,7 @@ watch(
 .viewer-layout {
   display: grid;
   grid-template-columns: 1fr 320px;
+  height: 100%;
   border: 1px solid #E5E7EB;
   border-radius: 12px;
   overflow: hidden;
@@ -551,6 +562,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 0;
   background-color: #FFFFFF;
   background-image:
     linear-gradient(#E5E7EB 1px, transparent 1px),
@@ -561,15 +573,19 @@ watch(
 
 .canvas-stage {
   position: relative;
-  display: inline-block;
-  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .canvas-image-native {
   display: block;
   width: auto;
-  max-width: min(100%, 920px);
-  max-height: 520px;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .overlay-canvas {
