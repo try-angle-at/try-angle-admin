@@ -240,7 +240,7 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="isAiDocsDialogOpen" max-width="90%" max-height="90%">
+  <v-dialog v-model="isAiDocsDialogOpen" width="90%" height="90%">
     <RefImgAiDocs
       :ai-docs="aiDocsPayload.aiDocs"
       :title="aiDocsPayload.title"

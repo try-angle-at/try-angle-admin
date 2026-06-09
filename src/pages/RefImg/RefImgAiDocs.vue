@@ -5,54 +5,81 @@
       variant="text"
       size="small"
       @click="emit('close')"
-      style="position: absolute; top: 12px; right: 12px; color: #6B7280; z-index: 10;"
+      class="close-btn"
     />
 
     <v-card-title>
-      <v-row no-gutters class="align-center | justify-center | mt-3" style="color: #364153; font-size: 18px; font-weight: 700;">
+      <v-row no-gutters class="align-center | justify-center | mt-3 | viewer-title">
         {{ props.title || 'AI 데이터 뷰어' }}
       </v-row>
     </v-card-title>
 
-    <v-card-text style="padding: 0 8px;">
-      <v-row no-gutters class="mt-1">
-        <v-col>
-          <div class="meta-label">제목</div>
-          <div class="meta-value">{{ props.title || '-' }}</div>
-        </v-col>
-      </v-row>
+    <v-card-text style="padding: 0px 8px;">
+      <div class="viewer-layout">
+        <section class="canvas-panel">
+          <div v-if="props.imagePath" class="canvas-stage">
+            <img
+              ref="imageRef"
+              :src="props.imagePath"
+              class="canvas-image-native"
+              alt="reference"
+              @load="handleImageLoad"
+            />
+            <canvas ref="overlayRef" class="overlay-canvas" />
+          </div>
+          <div v-else class="canvas-empty">이미지 없음</div>
 
-      <v-row no-gutters class="mt-3">
-        <v-col>
-          <div class="meta-label">이미지 경로</div>
-          <div class="meta-value">{{ props.imagePath || '-' }}</div>
-        </v-col>
-      </v-row>
+          <div class="canvas-card" style="top: 16px; left: 16px;">
+            <v-label>lens info</v-label>
+            <div class="hud-main">{{ displayLensMain }}</div>
+            <div class="hud-sub">{{ displayLensSub }}</div>
+            <div class="hud-model">{{ displayLensModel }}</div>
+          </div>
 
-      <v-row no-gutters class="mt-3">
-        <v-col>
-          <div class="meta-label">AI Docs</div>
-          <v-textarea
-            :model-value="props.aiDocs"
-            readonly
-            auto-grow
-            rows="10"
-            max-rows="14"
-            class="inputbox"
-            variant="outlined"
-            density="compact"
-            rounded="lg"
-            bg-color="#ffffff"
-            base-color="#4A5565"
-            color="#E5E8EB"
-          />
-        </v-col>
-      </v-row>
+          <div class="canvas-card" style="left: 16px; bottom: 16px;">
+            <v-label>피사체 정보</v-label>
+            <div class="subject-main">{{ displayShotType }}</div>
+            <div class="subject-line"><span>shot confidence</span><strong>{{ displayShotConf }}</strong></div>
+            <div class="subject-line"><span>estimated distance</span><strong>{{ displayDistance }}</strong></div>
+            <div class="subject-line"><span>shoulder ratio</span><strong>{{ displayShoulderRatio }}</strong></div>
+            <div class="subject-line"><span>body type</span><strong>{{ displayBodyType }}</strong></div>
+            <div class="subject-line"><span>nose position</span><strong>{{ displayNose }}</strong></div>
+          </div>
+        </section>
+
+        <aside class="right-panel">
+          <div class="panel-section">
+            <v-label>분석 점수</v-label>
+            <div class="score-row">
+              <div class="score-big">{{ displayOverallScore }}</div>
+              <div class="score-meta">overall score</div>
+            </div>
+            <div class="score-track">
+              <div class="score-fill" :style="{ width: scorePercent }" />
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <v-label>카메라 정보</v-label>
+            <div class="metric"><span>camera angle</span><strong>{{ displayCamAngle }}</strong></div>
+            <div class="metric"><span>focal type</span><strong>{{ displayLensType }}</strong></div>
+            <div class="metric"><span>image size</span><strong>{{ displayImageSize }}</strong></div>
+            <div class="metric"><span>bbox</span><strong class="mono">{{ displayBbox }}</strong></div>
+          </div>
+
+          <div class="panel-section">
+            <v-label>원본 AI JSON</v-label>
+            <pre class="json-box">{{ prettyAiDocs }}</pre>
+          </div>
+        </aside>
+      </div>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup>
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
 const props = defineProps({
   aiDocs: {
     type: String,
@@ -69,24 +96,632 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+
+const imageRef = ref(null);
+const overlayRef = ref(null);
+
+const COCO17_CONNECTIONS = [
+  [0, 1], [0, 2], [1, 3], [2, 4],
+  [5, 6], [5, 7], [7, 9], [6, 8], [8, 10],
+  [5, 11], [6, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
+];
+
+const decodeHex = (hex) => {
+  const value = Number.parseInt(hex, 16);
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return value / 10000;
+};
+
+const parsePoseKpHex = (hexString) => {
+  const sanitized = String(hexString || '').trim();
+  if (!sanitized) {
+    return [];
+  }
+
+  const points = [];
+  const pointCount = Math.floor(sanitized.length / 12);
+  for (let i = 0; i < pointCount; i += 1) {
+    const offset = i * 12;
+    const x = decodeHex(sanitized.slice(offset, offset + 4));
+    const y = decodeHex(sanitized.slice(offset + 4, offset + 8));
+    const conf = decodeHex(sanitized.slice(offset + 8, offset + 12));
+    points.push({ x, y, conf });
+  }
+
+  return points;
+};
+
+const parseKpt17 = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, 17)
+    .map((item) => {
+      if (!Array.isArray(item)) {
+        return null;
+      }
+
+      return {
+        x: Number(item[0]),
+        y: Number(item[1]),
+        conf: Number(item[2] ?? 1),
+      };
+    })
+    .filter((item) => item && Number.isFinite(item.x) && Number.isFinite(item.y));
+};
+
+const parseBboxHex = (bboxHex) => {
+  const value = String(bboxHex || '').trim();
+  if (value.length < 16) {
+    return null;
+  }
+
+  return {
+    x: decodeHex(value.slice(0, 4)),
+    y: decodeHex(value.slice(4, 8)),
+    w: decodeHex(value.slice(8, 12)),
+    h: decodeHex(value.slice(12, 16)),
+  };
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const normalizeKpsIntoBbox = (points, bbox) => {
+  const hasOutOfRange = points.some((point) => (
+    point.x < 0 || point.x > 1 || point.y < 0 || point.y > 1
+  ));
+
+  if (!hasOutOfRange || !bbox) {
+    return points;
+  }
+
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const rangeX = Math.max(maxX - minX, 1e-6);
+  const rangeY = Math.max(maxY - minY, 1e-6);
+
+  return points.map((point) => ({
+    x: clamp(bbox.x + ((point.x - minX) / rangeX) * bbox.w, 0, 1),
+    y: clamp(bbox.y + ((point.y - minY) / rangeY) * bbox.h, 0, 1),
+    conf: clamp(Number(point.conf ?? 0), 0, 1),
+  }));
+};
+
+const parsedAiDocs = computed(() => {
+  if (!props.aiDocs) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(props.aiDocs);
+  } catch (error) {
+    return null;
+  }
+});
+
+const analysis = computed(() => {
+  const source = parsedAiDocs.value || {};
+  if (source.refAnalysisOnly) {
+    return source.refAnalysisOnly;
+  }
+
+  if (source.pose || source.camera || source.shot) {
+    const pitch = Number(source.geoCalib?.pitchDegrees ?? source.camera?.pitchCal);
+    const confidenceMap = {
+      high: 0.9,
+      medium: 0.6,
+      low: 0.3,
+    };
+
+    const confidenceText = String(source.distance?.confidence || '').toLowerCase();
+    const shotConfidence = confidenceMap[confidenceText];
+    const reviewScoreRaw = Number(source.scores?.review);
+    const reviewScore = Number.isFinite(reviewScoreRaw)
+      ? clamp(reviewScoreRaw / 5, 0, 1)
+      : undefined;
+
+    const nosePoint = Array.isArray(source.pose?.kpt17) && source.pose.kpt17.length
+      ? source.pose.kpt17[0]
+      : null;
+
+    return {
+      exifInfo: {
+        focalLength35mm: source.geoCalib?.focalLengthMM35eq,
+        focalLength: source.distance?.focal,
+        aperture: '—',
+        iso: '—',
+        lensModel: source._source || 'Lens metadata unavailable',
+      },
+      focalLengthInfo: {
+        lensType: source.camera?.orientation || source.camera?.angleVisual,
+      },
+      distanceEstimation: {
+        estimatedDistanceM: source.distance?.estimated,
+        shoulderRatio: source.framing?.coverage,
+        bodyTypeAssumption: source.poseGeom?.bodyLeaning || source.camera?.posture || '—',
+      },
+      framingResult: {
+        shotType: source.shot?.shotType,
+        shotTypeConfidence: shotConfidence,
+        cameraAngle: source.camera?.angleVisual,
+        cameraAngleValue: pitch,
+        nosePosition: Array.isArray(nosePoint)
+          ? { x: Number(nosePoint[0]), y: Number(nosePoint[1]) }
+          : null,
+        overallScore: reviewScore,
+      },
+      refInput: {
+        imageSize: {
+          width: source.size?.w,
+          height: source.size?.h,
+        },
+      },
+      BBox: source.pose?.bbox,
+    };
+  }
+
+  if (!source.refData) {
+    return null;
+  }
+
+  const refData = source.refData;
+  const exif = refData.exif || {};
+  const focalLengthInfo = refData.focalLengthInfo || {};
+  const framing = refData.framing || {};
+  const size = refData.size || {};
+
+  return {
+    exifInfo: {
+      focalLength35mm: exif.focalLengthMM,
+      focalLength: exif.focalLength,
+      aperture: exif.aperture,
+      iso: exif.iso,
+      lensModel: exif.lensModel,
+    },
+    focalLengthInfo,
+    distanceEstimation: {
+      estimatedDistanceM: refData.estimatedDistance,
+      shoulderRatio: refData.shoulderRatio,
+      bodyTypeAssumption: refData.bodyType || '—',
+    },
+    framingResult: {
+      shotType: refData.shotType,
+      shotTypeConfidence: framing.shotTypeConfidence,
+      cameraAngle: framing.camAngle,
+      cameraAngleValue: framing.camAngleValue,
+      nosePosition: framing.nosePosition,
+      overallScore: refData.overallScore,
+    },
+    refInput: {
+      imageSize: {
+        width: size.w,
+        height: size.h,
+      },
+    },
+    BBox: refData.bbox,
+  };
+});
+
+const poseOverlay = computed(() => {
+  const source = parsedAiDocs.value || {};
+
+  if (source.pose) {
+    const bbox = parseBboxHex(source.pose.bbox);
+    const fromKpt17 = parseKpt17(source.pose.kpt17);
+    const fromHex = parsePoseKpHex(source.pose.kp).slice(0, 17);
+    const points = fromKpt17.length ? fromKpt17 : fromHex;
+
+    if (!points.length) {
+      return null;
+    }
+
+    return {
+      points: normalizeKpsIntoBbox(points, bbox),
+      bbox,
+    };
+  }
+
+  const poseKpHex = source?.refAnalysisOnly?.poseKeypoints?.kp;
+  const poseCount = Number(source?.refAnalysisOnly?.poseKeypoints?.count || 0);
+  const bboxHex = source?.refAnalysisOnly?.BBox;
+  if (!poseKpHex) {
+    return null;
+  }
+
+  const bbox = parseBboxHex(bboxHex);
+  const points = parsePoseKpHex(poseKpHex).slice(0, poseCount || 17);
+  const points17 = points.slice(0, 17);
+  if (!points17.length) {
+    return null;
+  }
+
+  return {
+    points: normalizeKpsIntoBbox(points17, bbox),
+    bbox,
+  };
+});
+
+const prettyAiDocs = computed(() => {
+  if (parsedAiDocs.value) {
+    return JSON.stringify(parsedAiDocs.value, null, 2);
+  }
+
+  if (props.aiDocs) {
+    return props.aiDocs;
+  }
+
+  return '{}';
+});
+
+const toFixed = (value, digits = 2, fallback = '—') => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : fallback;
+};
+
+const displayLensMain = computed(() => {
+  const exif = analysis.value?.exifInfo || {};
+  return `${exif.focalLength35mm ?? '—'}mm eq · f/${exif.aperture ?? '—'}`;
+});
+
+const displayLensSub = computed(() => {
+  const exif = analysis.value?.exifInfo || {};
+  return `${exif.focalLength ?? '—'}mm · ISO ${exif.iso ?? '—'}`;
+});
+
+const displayLensModel = computed(() => analysis.value?.exifInfo?.lensModel || 'Lens metadata unavailable');
+const displayShotType = computed(() => analysis.value?.framingResult?.shotType || '—');
+const displayShotConf = computed(() => toFixed(analysis.value?.framingResult?.shotTypeConfidence, 2));
+const displayDistance = computed(() => `${toFixed(analysis.value?.distanceEstimation?.estimatedDistanceM, 2)} m`);
+const displayShoulderRatio = computed(() => toFixed(analysis.value?.distanceEstimation?.shoulderRatio, 3));
+const displayBodyType = computed(() => analysis.value?.distanceEstimation?.bodyTypeAssumption || '—');
+const displayCamAngle = computed(() => {
+  const angle = toFixed(analysis.value?.framingResult?.cameraAngleValue, 1);
+  const label = analysis.value?.framingResult?.cameraAngle || '—';
+  return `${label} · ${angle}°`;
+});
+const displayLensType = computed(() => analysis.value?.focalLengthInfo?.lensType || '—');
+const displayImageSize = computed(() => {
+  const width = analysis.value?.refInput?.imageSize?.width;
+  const height = analysis.value?.refInput?.imageSize?.height;
+  if (!width || !height) {
+    return '—';
+  }
+  return `${width} x ${height}`;
+});
+const displayBbox = computed(() => analysis.value?.BBox || '—');
+const displayNose = computed(() => {
+  const nose = analysis.value?.framingResult?.nosePosition;
+  if (!nose) {
+    return 'x — · y —';
+  }
+
+  return `x ${toFixed(nose.x, 3)} · y ${toFixed(nose.y, 3)}`;
+});
+const displayOverallScore = computed(() => toFixed(analysis.value?.framingResult?.overallScore, 2));
+const scorePercent = computed(() => {
+  const score = Number(analysis.value?.framingResult?.overallScore);
+  if (!Number.isFinite(score)) {
+    return '0%';
+  }
+
+  const normalized = score > 1 ? score / 5 : score;
+  return `${Math.max(0, Math.min(100, normalized * 100)).toFixed(0)}%`;
+});
+
+const drawSkeleton = () => {
+  const canvas = overlayRef.value;
+  const image = imageRef.value;
+  const pose = poseOverlay.value;
+  if (!canvas || !image) {
+    return;
+  }
+
+  const width = image.clientWidth;
+  const height = image.clientHeight;
+  if (!width || !height) {
+    return;
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return;
+  }
+
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  context.clearRect(0, 0, width, height);
+
+  if (!pose?.points?.length) {
+    return;
+  }
+
+  const points = pose.points;
+  const threshold = 0.05;
+
+  if (pose.bbox) {
+    context.save();
+    context.strokeStyle = 'rgba(16, 185, 129, 0.95)';
+    context.lineWidth = 1.5;
+    context.setLineDash([6, 4]);
+    context.strokeRect(
+      pose.bbox.x * width,
+      pose.bbox.y * height,
+      pose.bbox.w * width,
+      pose.bbox.h * height,
+    );
+    context.restore();
+  }
+
+  context.save();
+  COCO17_CONNECTIONS.forEach(([startIdx, endIdx]) => {
+    const start = points[startIdx];
+    const end = points[endIdx];
+    if (!start || !end) {
+      return;
+    }
+
+    const lineAlpha = Math.min(start.conf ?? 0, end.conf ?? 0);
+    context.globalAlpha = lineAlpha < threshold ? 0.08 : clamp(lineAlpha, 0.2, 1);
+    context.strokeStyle = '#00B7FF';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(start.x * width, start.y * height);
+    context.lineTo(end.x * width, end.y * height);
+    context.stroke();
+  });
+  context.restore();
+
+  context.save();
+  points.forEach((point) => {
+    const alpha = Number(point.conf ?? 0);
+    context.globalAlpha = alpha < threshold ? 0.15 : clamp(alpha, 0.25, 1);
+    context.fillStyle = '#34D399';
+    context.beginPath();
+    context.arc(point.x * width, point.y * height, 3.5, 0, Math.PI * 2);
+    context.fill();
+  });
+  context.restore();
+};
+
+const handleImageLoad = () => {
+  drawSkeleton();
+};
+
+const handleResize = () => {
+  drawSkeleton();
+};
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+});
+
+watch(
+  () => [props.imagePath, props.aiDocs],
+  async () => {
+    await nextTick();
+    drawSkeleton();
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
-.meta-label {
-  color: #4A5565;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 4px;
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: #6B7280;
+  z-index: 20;
 }
 
-.meta-value {
+.viewer-title {
   color: #364153;
-  font-size: 14px;
-  word-break: break-all;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
 }
 
-.inputbox :deep(.v-field__input) {
-  color: #364153 !important;
-  font-size: 14px !important;
+.viewer-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.canvas-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  background-image:
+    linear-gradient(#E5E7EB 1px, transparent 1px),
+    linear-gradient(90deg, #E5E7EB 1px, transparent 1px);
+  background-size: 48px 48px;
+  padding: 24px;
+}
+
+.canvas-stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.canvas-image-native {
+  display: block;
+  width: auto;
+  max-width: min(100%, 920px);
+  max-height: 520px;
+}
+
+.overlay-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.canvas-empty {
+  font-size: 13px;
+  color: #6A7282;
+}
+
+.canvas-card {
+  background: rgba(255, 255, 255, 0.92);
+  position: absolute;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 10px 12px;
+  backdrop-filter: blur(8px);
+}
+
+.hud-label {
+  font-size: 10px;
+  color: #6A7282;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hud-main {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.hud-sub {
+  font-size: 12px;
+  color: #4B5563;
+}
+
+.hud-model {
+  font-size: 11px;
+  color: #6A7282;
+  margin-top: 4px;
+}
+
+.subject-main {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.subject-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: #6A7282;
+  margin-bottom: 3px;
+}
+
+.subject-line strong {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+.right-panel {
+  background: #FFFFFF;
+  border-left: 1px solid #E5E7EB;
+  overflow-y: auto;
+}
+
+.panel-section {
+  padding: 14px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.section-head {
+  font-size: 11px;
+  color: #6A7282;
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.score-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.score-big {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+
+.score-meta {
+  font-size: 11px;
+  color: #6A7282;
+}
+
+.score-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: #E5E7EB;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4B5563, #111827);
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #4B5563;
+  margin-bottom: 8px;
+}
+
+.metric strong {
+  color: #111827;
+  font-weight: 600;
+  text-align: right;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.json-box {
+  margin: 0;
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: #F9FAFB;
+  color: #1F2937;
+  font-size: 11px;
+  line-height: 1.45;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>
