@@ -256,116 +256,103 @@ const parsedAiDocs = computed(() => {
   }
 });
 
-const analysis = computed(() => {
+const aiDoc = computed(() => {
   const source = parsedAiDocs.value || {};
-  if (source.refAnalysisOnly) {
-    return source.refAnalysisOnly;
-  }
 
-  if (source.pose || source.camera || source.shot) {
-    const pitch = Number(source.geoCalib?.pitchDegrees ?? source.camera?.pitchCal);
-    const confidenceMap = {
-      high: 0.9,
-      medium: 0.6,
-      low: 0.3,
-    };
-
-    const confidenceText = String(source.distance?.confidence || '').toLowerCase();
-    const shotConfidence = confidenceMap[confidenceText];
-    const reviewScoreRaw = Number(source.scores?.review);
-    const reviewScore = Number.isFinite(reviewScoreRaw)
-      ? clamp(reviewScoreRaw / 5, 0, 1)
-      : undefined;
-
-    const nosePoint = Array.isArray(source.pose?.kpt17) && source.pose.kpt17.length
-      ? source.pose.kpt17[0]
-      : null;
-
+  if (source.pose || source.shot || source.size || source.camera) {
     return {
-      exifInfo: {
-        focalLength35mm: source.geoCalib?.focalLengthMM35eq,
-        focalLength: source.distance?.focal,
-        aperture: '—',
-        iso: '—',
-        lensModel: source._source || 'Lens metadata unavailable',
-      },
-      focalLengthInfo: {
-        lensType: source.camera?.orientation || source.camera?.angleVisual,
-      },
-      distanceEstimation: {
-        estimatedDistanceM: source.distance?.estimated,
-        shoulderRatio: source.framing?.coverage,
-        bodyTypeAssumption: source.poseGeom?.bodyLeaning || source.camera?.posture || '—',
-      },
-      framingResult: {
-        shotType: source.shot?.shotType,
-        shotTypeConfidence: shotConfidence,
-        cameraAngle: source.camera?.angleVisual,
-        cameraAngleValue: pitch,
-        nosePosition: Array.isArray(nosePoint)
-          ? { x: Number(nosePoint[0]), y: Number(nosePoint[1]) }
-          : null,
-        overallScore: reviewScore,
-      },
-      refInput: {
-        imageSize: {
-          width: source.size?.w,
-          height: source.size?.h,
-        },
-      },
-      BBox: source.pose?.bbox,
+      pose: source.pose || {},
+      shot: source.shot || {},
+      size: source.size || {},
+      camera: source.camera || {},
+      scores: source.scores || {},
+      framing: source.framing || {},
+      garment: source.garment || {},
+      quality: source.quality || {},
+      distance: source.distance || {},
+      geoCalib: source.geoCalib || {},
+      poseGeom: source.poseGeom || {},
+      bodyShape: source.bodyShape || {},
+      _source: source._source || '',
+      _signalCount: source._signalCount,
     };
   }
 
-  if (!source.refData) {
-    return null;
+  const legacy = source.refAnalysisOnly;
+  if (!legacy) {
+    return {
+      pose: {},
+      shot: {},
+      size: {},
+      camera: {},
+      scores: {},
+      framing: {},
+      garment: {},
+      quality: {},
+      distance: {},
+      geoCalib: {},
+      poseGeom: {},
+      bodyShape: {},
+      _source: '',
+      _signalCount: undefined,
+    };
   }
 
-  const refData = source.refData;
-  const exif = refData.exif || {};
-  const focalLengthInfo = refData.focalLengthInfo || {};
-  const framing = refData.framing || {};
-  const size = refData.size || {};
+  const overallScore = Number(legacy?.framingResult?.overallScore);
+  const reviewScore = Number.isFinite(overallScore)
+    ? (overallScore <= 1 ? overallScore * 5 : overallScore)
+    : undefined;
 
   return {
-    exifInfo: {
-      focalLength35mm: exif.focalLengthMM,
-      focalLength: exif.focalLength,
-      aperture: exif.aperture,
-      iso: exif.iso,
-      lensModel: exif.lensModel,
+    pose: {
+      kp: legacy?.poseKeypoints?.kp,
+      bbox: legacy?.BBox,
+      kpt17: [],
     },
-    focalLengthInfo,
-    distanceEstimation: {
-      estimatedDistanceM: refData.estimatedDistance,
-      shoulderRatio: refData.shoulderRatio,
-      bodyTypeAssumption: refData.bodyType || '—',
+    shot: {
+      shotType: legacy?.framingResult?.shotType,
+      typeCanonical: legacy?.framingResult?.shotType,
     },
-    framingResult: {
-      shotType: refData.shotType,
-      shotTypeConfidence: framing.shotTypeConfidence,
-      cameraAngle: framing.camAngle,
-      cameraAngleValue: framing.camAngleValue,
-      nosePosition: framing.nosePosition,
-      overallScore: refData.overallScore,
+    size: {
+      w: legacy?.refInput?.imageSize?.width,
+      h: legacy?.refInput?.imageSize?.height,
     },
-    refInput: {
-      imageSize: {
-        width: size.w,
-        height: size.h,
-      },
+    camera: {
+      angleVisual: legacy?.framingResult?.cameraAngle,
+      pitchCal: legacy?.framingResult?.cameraAngleValue,
+      orientation: legacy?.focalLengthInfo?.lensType,
+      posture: legacy?.distanceEstimation?.bodyTypeAssumption,
     },
-    BBox: refData.bbox,
+    scores: {
+      review: reviewScore,
+    },
+    framing: {
+      coverage: legacy?.distanceEstimation?.shoulderRatio,
+    },
+    garment: {},
+    quality: {},
+    distance: {
+      estimated: legacy?.distanceEstimation?.estimatedDistanceM,
+      focal: legacy?.exifInfo?.focalLength,
+      confidence: undefined,
+    },
+    geoCalib: {
+      pitchDegrees: legacy?.framingResult?.cameraAngleValue,
+      focalLengthMM35eq: legacy?.exifInfo?.focalLength35mm,
+    },
+    poseGeom: {
+      bodyLeaning: legacy?.distanceEstimation?.bodyTypeAssumption,
+    },
+    bodyShape: {},
+    _source: legacy?.exifInfo?.lensModel || '',
+    _signalCount: undefined,
   };
 });
 
 const poseOverlay = computed(() => {
-  const source = parsedAiDocs.value || {};
-
-  if (source.pose) {
-    const bbox = parseBboxHex(source.pose.bbox);
-    const fromKpt17 = parseKpt17(source.pose.kpt17);
-    const fromHex = parsePoseKpHex(source.pose.kp);
+  const bbox = parseBboxHex(aiDoc.value?.pose?.bbox);
+  const fromKpt17 = parseKpt17(aiDoc.value?.pose?.kpt17);
+  const fromHex = parsePoseKpHex(aiDoc.value?.pose?.kp);
     const points = fromHex.length ? fromHex : fromKpt17;
 
     if (!points.length) {
@@ -376,25 +363,6 @@ const poseOverlay = computed(() => {
       points: normalizeKpsIntoBbox(points, bbox),
       bbox,
     };
-  }
-
-  const poseKpHex = source?.refAnalysisOnly?.poseKeypoints?.kp;
-  const poseCount = Number(source?.refAnalysisOnly?.poseKeypoints?.count || 0);
-  const bboxHex = source?.refAnalysisOnly?.BBox;
-  if (!poseKpHex) {
-    return null;
-  }
-
-  const bbox = parseBboxHex(bboxHex);
-  const points = parsePoseKpHex(poseKpHex).slice(0, poseCount || undefined);
-  if (!points.length) {
-    return null;
-  }
-
-  return {
-    points: normalizeKpsIntoBbox(points, bbox),
-    bbox,
-  };
 });
 
 const toFixed = (value, digits = 2, fallback = '—') => {
@@ -403,47 +371,49 @@ const toFixed = (value, digits = 2, fallback = '—') => {
 };
 
 const displayLensMain = computed(() => {
-  const exif = analysis.value?.exifInfo || {};
-  return `${exif.focalLength35mm ?? '—'}mm eq · f/${exif.aperture ?? '—'}`;
+  return `${aiDoc.value?.geoCalib?.focalLengthMM35eq ?? '—'}mm eq · f/—`;
 });
 
 const displayLensSub = computed(() => {
-  const exif = analysis.value?.exifInfo || {};
-  return `${exif.focalLength ?? '—'}mm · ISO ${exif.iso ?? '—'}`;
+  return `${aiDoc.value?.distance?.focal ?? '—'}mm · ISO —`;
 });
 
-const displayLensModel = computed(() => analysis.value?.exifInfo?.lensModel || 'Lens metadata unavailable');
-const displayShotType = computed(() => analysis.value?.framingResult?.shotType || '—');
-const displayShotConf = computed(() => toFixed(analysis.value?.framingResult?.shotTypeConfidence, 2));
-const displayDistance = computed(() => `${toFixed(analysis.value?.distanceEstimation?.estimatedDistanceM, 2)} m`);
-const displayShoulderRatio = computed(() => toFixed(analysis.value?.distanceEstimation?.shoulderRatio, 3));
-const displayBodyType = computed(() => analysis.value?.distanceEstimation?.bodyTypeAssumption || '—');
+const displayLensModel = computed(() => aiDoc.value?._source || 'Lens metadata unavailable');
+const displayShotType = computed(() => aiDoc.value?.shot?.shotType || aiDoc.value?.shot?.typeCanonical || '—');
+const displayShotConf = computed(() => {
+  const confText = String(aiDoc.value?.distance?.confidence || '').toLowerCase();
+  const confidenceMap = { high: 0.9, medium: 0.6, low: 0.3 };
+  return toFixed(confidenceMap[confText], 2);
+});
+const displayDistance = computed(() => `${toFixed(aiDoc.value?.distance?.estimated, 2)} m`);
+const displayShoulderRatio = computed(() => toFixed(aiDoc.value?.framing?.coverage, 3));
+const displayBodyType = computed(() => aiDoc.value?.poseGeom?.bodyLeaning || aiDoc.value?.camera?.posture || '—');
 const displayCamAngle = computed(() => {
-  const angle = toFixed(analysis.value?.framingResult?.cameraAngleValue, 1);
-  const label = analysis.value?.framingResult?.cameraAngle || '—';
+  const angle = toFixed(aiDoc.value?.geoCalib?.pitchDegrees ?? aiDoc.value?.camera?.pitchCal, 1);
+  const label = aiDoc.value?.camera?.angleVisual || '—';
   return `${label} · ${angle}°`;
 });
-const displayLensType = computed(() => analysis.value?.focalLengthInfo?.lensType || '—');
+const displayLensType = computed(() => aiDoc.value?.camera?.orientation || '—');
 const displayImageSize = computed(() => {
-  const width = analysis.value?.refInput?.imageSize?.width;
-  const height = analysis.value?.refInput?.imageSize?.height;
+  const width = aiDoc.value?.size?.w;
+  const height = aiDoc.value?.size?.h;
   if (!width || !height) {
     return '—';
   }
   return `${width} x ${height}`;
 });
-const displayBbox = computed(() => analysis.value?.BBox || '—');
+const displayBbox = computed(() => aiDoc.value?.pose?.bbox || '—');
 const displayNose = computed(() => {
-  const nose = analysis.value?.framingResult?.nosePosition;
-  if (!nose) {
+  const nosePoint = Array.isArray(aiDoc.value?.pose?.kpt17) ? aiDoc.value.pose.kpt17[0] : null;
+  if (!Array.isArray(nosePoint)) {
     return 'x — · y —';
   }
 
-  return `x ${toFixed(nose.x, 3)} · y ${toFixed(nose.y, 3)}`;
+  return `x ${toFixed(nosePoint[0], 3)} · y ${toFixed(nosePoint[1], 3)}`;
 });
-const displayOverallScore = computed(() => toFixed(analysis.value?.framingResult?.overallScore, 2));
+const displayOverallScore = computed(() => toFixed(aiDoc.value?.scores?.review, 2));
 const scorePercent = computed(() => {
-  const score = Number(analysis.value?.framingResult?.overallScore);
+  const score = Number(aiDoc.value?.scores?.review);
   if (!Number.isFinite(score)) {
     return '0%';
   }
