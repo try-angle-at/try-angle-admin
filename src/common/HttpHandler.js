@@ -600,6 +600,19 @@ export async function deleteProduct(params = {}) {
 }
 
 // ----- 세션 관련 API ----- //
+export async function listSessions(params = {}) {
+  return request('POST', '/session/list', {
+    body: compact({
+      page: params.page,
+      limit: params.limit,
+      userId: params.userId,
+      imgId: params.imgId,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    }),
+  });
+}
+
 export async function startSession(params = {}) {
   return request('POST', '/session/start', {
     body: compact({

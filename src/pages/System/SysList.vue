@@ -10,19 +10,12 @@
                     hide-details
                 />
         <v-text-field
-          v-model="search.prodId"
-          placeholder="상품 ID 검색"
+          v-model="search.imgId"
+          placeholder="이미지 ID 검색"
           class="inputbox | mr-2"
                     variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
                     hide-details
                 />
-        <v-text-field
-          v-model="search.imgId"
-          placeholder="이미지 ID 검색"
-          class="inputbox"
-          variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-          hide-details
-        />
             </v-col>
             <v-col cols="auto" class="align-item-center">
                 <v-btn
@@ -57,24 +50,12 @@
             @rowClick="handleRowClick"
         > 
 
-          <template #item.snapUrl="{ item }">
-            <v-img
-              v-if="(item?.raw ?? item)?.snapUrl"
-              :src="(item?.raw ?? item)?.snapUrl"
-              width="64"
-              height="64"
-              cover
-              class="thumb-img"
-            />
-            <span v-else>-</span>
-          </template>
-
-          <template #item.prodId="{ item }">
+          <template #item.id="{ item }">
             <button
               type="button"
               class="link-button"
-              @click.stop="handleClickBtn('goToProductDetail', (item?.raw ?? item)?.prodId)"
-            >{{ (item?.raw ?? item)?.prodId ?? '-' }}</button>
+              @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
+            >{{ (item?.raw ?? item)?.id ?? '-' }}</button>
           </template>
 
           <template #item.imgId="{ item }">
@@ -83,6 +64,18 @@
               class="link-button"
               @click.stop="handleClickBtn('goToRefImgDetail', (item?.raw ?? item)?.imgId)"
             >{{ (item?.raw ?? item)?.imgId ?? '-' }}</button>
+          </template>
+
+          <template #item.device="{ item }">
+            <span>{{ (item?.raw ?? item)?.device || '-' }}</span>
+          </template>
+
+          <template #item.sStat="{ item }">
+            <span
+              v-if="(item?.raw ?? item)?.sStat !== undefined && (item?.raw ?? item)?.sStat !== null && (item?.raw ?? item)?.sStat !== '-'"
+              class="status-tag"
+            >{{ getStatusLabel((item?.raw ?? item)?.sStat) }}</span>
+            <span v-else>-</span>
           </template>
         
           <template #item.action="{ item }">
@@ -116,11 +109,9 @@ const emit = defineEmits([
 ]);
 const router = useRouter(); 
 const util = Util.getInstance();
-const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, '');
 
 const search = ref({
   userId: '',
-  prodId: '',
   imgId: '',
 });
 
@@ -131,15 +122,18 @@ const pageNation = ref({
 
 const totalCount = ref(0);
 const isLoading = ref(false);
+const statusOptions = ref([
+  { label: '전체 상태', value: null },
+]);
 
 const headerItems = [
-  { text: '스냅', value: 'snapUrl' },
-  { text: '스냅 ID', value: 'id' },
-  { text: '사용자', value: 'userName' },
-  { text: '상품 ID', value: 'prodId' },
+  { text: '세션 ID', value: 'id' },
+  { text: '사용자명', value: 'userName' },
   { text: '이미지 ID', value: 'imgId' },
-  { text: '세션 ID', value: 'sId' },
-  { text: '조회수', value: 'viewCnt' },
+  { text: '시작일시', value: 'sDate' },
+  { text: '종료일시', value: 'eDate' },
+  { text: '디바이스', value: 'device' },
+  { text: '세션 상태', value: 'sStat' },
   { text: '등록일', value: 'cDate' },
   { text: '수정일', value: 'uDate' },
   { text: '상세', value: 'action' },
@@ -150,26 +144,24 @@ const tableItems = ref([]);
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
   emit('show-right-btn');
-  fetchListSnaps();
+  fetchStatusLabelOption();
+  fetchListSessions();
 });
 
 // ----- 함수 정의 ----- //
-function buildThumbnailUrl(path) {
-  if (!path) {
-    return null;
+function getStatusLabel(value) {
+  const matchedOption = statusOptions.value.find((option) => option.value === value || option.value === String(value));
+  return matchedOption?.label || '-';
+}
+
+function formatDevice(device) {
+  if (!device || typeof device !== 'object') {
+    return '-';
   }
 
-  const normalizedPath = String(path).trim();
-  if (!normalizedPath) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(normalizedPath)) {
-    return normalizedPath;
-  }
-
-  const relativePath = normalizedPath.replace(/^\/+/, '');
-  return imageBaseUrl ? `${imageBaseUrl}/${relativePath}` : `/${relativePath}`;
+  const platform = device.platform || '-';
+  const appVersion = device.appVersion || '-';
+  return `${platform} / ${appVersion}`;
 }
 
 function parseOptionalNumber(value) {
@@ -181,15 +173,14 @@ function parseOptionalNumber(value) {
   return Number.isNaN(parsedValue) ? null : parsedValue;
 }
 
-async function fetchListSnaps() {
+async function fetchListSessions() {
   isLoading.value = true;
 
   try {
-    const response = await HttpHandler.listSnaps({
+    const response = await HttpHandler.listSessions({
       page: pageNation.value.current,
       limit: pageNation.value.limit,
       userId: parseOptionalNumber(search.value.userId),
-      prodId: parseOptionalNumber(search.value.prodId),
       imgId: parseOptionalNumber(search.value.imgId),
       sortBy: 'cDate',
       sortOrder: 'desc',
@@ -198,16 +189,16 @@ async function fetchListSnaps() {
     const list = response?.data?.items || [];
     const total = response?.data?.total || 0;
 
-    const mappedRows = list.map((snap = {}) => ({
-      id: snap.id ?? '-',
-      userName: snap.userName || snap.userId || '-',
-      prodId: snap.prodId ?? '-',
-      imgId: snap.imgId ?? '-',
-      sId: snap.sId || '-',
-      viewCnt: snap.viewCnt ?? 0,
-      snapUrl: buildThumbnailUrl(snap.snapUrl),
-      cDate: util.formatUnixDateTime(snap.cDate),
-      uDate: util.formatUnixDateTime(snap.uDate),
+    const mappedRows = list.map((session = {}) => ({
+      id: session.id ?? '-',
+      userName: session.userName || '-',
+      imgId: session.imgId ?? '-',
+      sDate: util.formatUnixDateTime(session.sDate),
+      eDate: util.formatUnixDateTime(session.eDate),
+      device: formatDevice(session.device),
+      sStat: session.sStat,
+      cDate: util.formatUnixDateTime(session.cDate),
+      uDate: util.formatUnixDateTime(session.uDate),
       action: '상세보기',
     }));
 
@@ -215,7 +206,7 @@ async function fetchListSnaps() {
     tableItems.value = mappedRows;
 
   } catch (error) {
-    console.error('스냅 목록 조회 실패:', error);
+    console.error('세션 목록 조회 실패:', error);
     tableItems.value = [];
     totalCount.value = 0;
   } finally {
@@ -223,40 +214,67 @@ async function fetchListSnaps() {
   }
 }
 
+async function fetchStatusLabelOption() {
+  try {
+    const response = await HttpHandler.listTags({
+      page: 1,
+      parentCode: 'SYS_STAT_ROOT',
+      tagName: null,
+    });
+
+    const statusItems = response?.data?.items || [];
+    const uniqueStatusOptions = new Map();
+
+    statusItems.forEach((status = {}) => {
+      const codeSuffix = Number(String(status.code || '').split('_').pop());
+      const value = Number.isNaN(codeSuffix) ? status.code : codeSuffix;
+
+      if (value === undefined || value === null || uniqueStatusOptions.has(value)) {
+        return;
+      }
+
+      uniqueStatusOptions.set(value, {
+        value,
+        label: status.tagName || status.code || String(value),
+      });
+    });
+
+    statusOptions.value = [
+      { label: '전체 상태', value: null },
+      ...Array.from(uniqueStatusOptions.values()),
+    ];
+  } catch (error) {
+    console.error('세션 상태 옵션 조회 실패:', error);
+    statusOptions.value = [{ label: '전체 상태', value: null }];
+  }
+}
+
 function handleClickBtn(action, value) {
   switch (action) {
     case 'reset':
       search.value.userId = '';
-      search.value.prodId = '';
       search.value.imgId = '';
       pageNation.value.current = 1;
-      fetchListSnaps();
+      fetchListSessions();
       break;
 
     case 'search':
       pageNation.value.current = 1;
-      fetchListSnaps();
+      fetchListSessions();
       break;
 
     case 'goToDetail':
-      navigateTo(router, `/snaps/${value}`);
-      break;
-
-    case 'goToProductDetail':
-      if (!value || value === '-') {
-        return;
-      }
-      navigateTo(router, `/products/${value}`);
+      navigateTo(router, `/system/${value}`);
       break;
 
     case 'goToRefImgDetail':
-      if (!value || value === '-') {
+      if (!value || value === '-' || Number.isNaN(Number(value))) {
         return;
       }
       navigateTo(router, `/ref-images/${value}`);
       break;
     default:
-      console.error('알 수 없는 스냅 액션 타입:', action);
+      console.error('알 수 없는 세션 액션 타입:', action);
   }
 }
 
@@ -271,13 +289,13 @@ function handleRowClick({ item }) {
 
 function handlePageChange(nextPage) {
   pageNation.value.current = nextPage;
-  fetchListSnaps();
+  fetchListSessions();
 }
 
 function handleItemsPerPageChange(limit) {
   pageNation.value.limit = limit;
   pageNation.value.current = 1;
-  fetchListSnaps();
+  fetchListSessions();
 }
 </script> 
 
@@ -346,13 +364,6 @@ function handleItemsPerPageChange(limit) {
     font-weight: 500;
 }
 
-.thumb-img {
-    border-radius: 8px; 
-    border: 0.7px solid #E5E7EB;
-    background-color: #F9FAFB;
-    margin: 4px;
-}
-
 .link-button {
   color: #2563EB;
   cursor: pointer;
@@ -363,5 +374,19 @@ function handleItemsPerPageChange(limit) {
   color: #9CA3AF;
   cursor: default;
   text-decoration: none;
+}
+
+.status-tag {
+  display: flex;
+  padding: 4px 8px;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  border-radius: 100px;
+  background: #E6F0FF;
+  color: #2B7FFF;
+  font-family: Pretendard;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>
