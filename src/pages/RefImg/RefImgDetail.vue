@@ -239,6 +239,15 @@
       </template>
     </v-card>
   </v-dialog>
+
+  <v-dialog v-model="isAiDocsDialogOpen" max-width="90%" max-height="90%">
+    <RefImgAiDocs
+      :ai-docs="aiDocsPayload.aiDocs"
+      :title="aiDocsPayload.title"
+      :image-path="aiDocsPayload.imagePath"
+      @close="isAiDocsDialogOpen = false"
+    />
+  </v-dialog>
 </template>
 
 
@@ -248,6 +257,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
+import RefImgAiDocs from './RefImgAiDocs.vue';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
 
@@ -331,6 +341,13 @@ const dialog = ref({
   okText: '확인',
   okButton() {}
 });
+const isAiDocsDialogOpen = ref(false);
+
+const aiDocsPayload = computed(() => ({
+  title: refImgDetail.value.title || '',
+  imagePath: refImgDetail.value.imgUrl || '',
+  aiDocs: aiDocText.value || '',
+}));
 
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
@@ -679,22 +696,7 @@ function downloadAiDoc() {
 }
 
 function viewAiDoc() {
-  if (!aiDoc.value) {
-    return;
-  }
-
-  const newWindow = window.open('', '_blank');
-  if (!newWindow) {
-    return;
-  }
-
-  const escaped = aiDocText.value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  newWindow.document.write(`<pre>${escaped}</pre>`);
-  newWindow.document.close();
+  isAiDocsDialogOpen.value = true;
 }
 
 function openDialog(title, text, onConfirm, isOneBtn, okText) {
