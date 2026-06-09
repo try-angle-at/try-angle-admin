@@ -72,6 +72,15 @@
             <div class="metric"><span>image size</span><strong>{{ displayImageSize }}</strong></div>
             <div class="metric"><span>bbox</span><strong class="mono">{{ displayBbox }}</strong></div>
           </v-row>
+
+          <v-row no-gutters class="panel-section">
+            <v-col cols="12">
+              <v-label>AI 원본 데이터 JSON</v-label>
+            </v-col>
+            <pre class="json-box">{{ prettyAiDocs }}</pre>
+          </v-row>
+
+          
         </aside>
       </div>
     </v-card-text>
@@ -363,6 +372,18 @@ const poseOverlay = computed(() => {
       points: normalizeKpsIntoBbox(points, bbox),
       bbox,
     };
+});
+
+const prettyAiDocs = computed(() => {
+  if (parsedAiDocs.value) {
+    return JSON.stringify(parsedAiDocs.value, null, 2);
+  }
+
+  if (props.aiDocs) {
+    return props.aiDocs;
+  }
+
+  return '{}';
 });
 
 const toFixed = (value, digits = 2, fallback = '—') => {
@@ -751,7 +772,6 @@ watch(
 
 .json-box {
   margin: 0;
-  max-height: 280px;
   overflow: auto;
   padding: 10px;
   border: 1px solid #E5E7EB;
