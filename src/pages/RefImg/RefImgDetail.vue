@@ -192,6 +192,53 @@
           </v-col>
         </v-row>
     </v-container>
+
+  <!-- 다이얼로그 -->
+  <v-dialog v-model="dialog.isActive" width="400px">
+    <v-card style="padding: 16px; border-radius: 24px;">
+      <v-btn 
+        icon="mdi-close" variant="text" size="small"
+        v-if="!dialog.isOneBtn"
+        @click="dialog.isActive = false"
+        style="position: absolute; top: 12px; right: 12px; color: #6B7280; z-index: 10;"
+      />
+
+      <v-card-title>
+        <v-row no-gutters class="align-center | justify-center | mt-3"
+          style="color: #364153; font-size: 18px; font-weight: 700; letter-spacing: -0.2px;"
+        >
+          {{ dialog.title }}
+        </v-row>
+      </v-card-title>
+
+      <v-card-text style="padding: 0px; margin-bottom: 12px;">
+        <v-row no-gutters
+        style="justify-content: center; text-align: center; color: #6A7282; font-size: 14px; font-weight: 400; letter-spacing: -0.15px;"
+        v-html="dialog.text"/>
+      </v-card-text>
+
+      <template v-slot:actions>
+        <div style="display: flex; width: 100%; gap: 8px;">
+          <v-btn 
+            v-if="!dialog.isOneBtn"
+            class="thin-btn" 
+            style="border-radius: 16px; flex: 1;" 
+            variant="outlined" 
+            @click="dialog.isActive = false" 
+            :loading="isSubmitting"
+          >취소</v-btn>
+          <v-btn 
+            class="active-thin-btn" 
+            :style="`border-radius: 16px; flex: 1; ${dialog.isOneBtn ? 'width: 100%;' : ''}`" 
+            variant="outlined" 
+            @click="dialog.okButton" 
+            :loading="isSubmitting">
+            {{ dialog.okText }}
+          </v-btn>
+        </div>
+      </template>
+    </v-card>
+  </v-dialog>
 </template>
 
 
@@ -236,7 +283,9 @@ const refImgDetail = ref({
   cDate: '',
   uDate: '',
 });
+
 const aiDoc = ref(null);
+
 const imageFileName = computed(() => {
   const url = refImgDetail.value.imgUrl;
   if (!url) {
@@ -272,6 +321,15 @@ const errorMsg = ref({
 const categoryOptions = ref([]);
 const tagOptions = ref([]);
 const tagNameByCode = ref({});
+
+const dialog = ref({
+  title: '',
+  text: '',
+  isActive: false,
+  isOneBtn: false,
+  okText: '확인',
+  okButton() {}
+});
 
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
@@ -431,9 +489,20 @@ function handleClickBtn(action, value) {
     case 'edit':
       navigateTo(router, '/ref-images/create');
       break;
-
-    case 'delete':
-      navigateTo(router, '/ref-images/create');
+    case 'delete': 
+      {
+        const targetRefId = refImgDetail.value.id ?? props.refImgId;
+      openDialog(
+        '삭제 확인',
+        '정말 이 레퍼런스 이미지를 삭제하시겠습니까?',
+        () => {
+          dialog.value.isActive = false;
+          fetchDeleteRefImg(targetRefId);
+        },
+        false,
+        '삭제'
+      );
+      }
       break;
 
     case 'downloadAiDoc':
@@ -446,6 +515,50 @@ function handleClickBtn(action, value) {
 
     default:
       console.error('알 수 없는 인증 액션 타입:', action);
+  }
+}
+
+async function fetchDeleteRefImg(value) {
+  const refId = Number(value);
+  if (!refId) {
+    console.error('삭제할 레퍼런스 이미지 ID가 유효하지 않습니다.');
+    return;
+  }
+
+  try {
+    const response = await HttpHandler.deleteReference({ id: refId });
+    const statusCode = response?.status?.code;
+    const isDeleted = response?.data?.deleted;
+
+    if (statusCode && statusCode !== 'S0000') {
+      throw new Error(response?.status?.msg || '레퍼런스 이미지 삭제에 실패했습니다.');
+    }
+
+    if (isDeleted === false) {
+      throw new Error(response?.status?.msg || '레퍼런스 이미지 삭제에 실패했습니다.');
+    }
+
+    openDialog(
+      '삭제 완료',
+      '레퍼런스 이미지가 삭제되었습니다.',
+      () => {
+        dialog.value.isActive = false;
+        navigateTo(router, '/ref-images');
+      },
+      true,
+      '확인'
+    );
+  } catch (error) {
+    console.error('레퍼런스 이미지 삭제 실패:', error);
+    openDialog(
+      '삭제 실패',
+      error?.message || '레퍼런스 이미지 삭제 중 오류가 발생했습니다.',
+      () => {
+        dialog.value.isActive = false;
+      },
+      true,
+      '확인'
+    );
   }
 }
 
@@ -482,6 +595,15 @@ function viewAiDoc() {
 
   newWindow.document.write(`<pre>${escaped}</pre>`);
   newWindow.document.close();
+}
+
+function openDialog(title, text, onConfirm, isOneBtn, okText) {
+  dialog.value.title = title;
+  dialog.value.text = text;
+  dialog.value.okButton = onConfirm;
+  dialog.value.isActive = true;
+  dialog.value.isOneBtn = isOneBtn || false;
+  dialog.value.okText = okText || '확인';
 }
 </script> 
 
