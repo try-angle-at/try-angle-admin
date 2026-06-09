@@ -106,11 +106,10 @@
             </v-row>
             <v-row no-gutters justify="center" class="mt-1">
               <v-col>
-                <v-textarea
-                  :model-value="aiDocText"
+                <v-text-field
+                  :model-value="aiDocDisplayName"
                   class="inputbox"
                   readonly
-                  auto-grow rows="5" max-rows="7"
                   variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
                 >
                   <template #append-inner>
@@ -121,7 +120,7 @@
                       class="small-btn | outline-grey"
                     >다운로드</v-btn>
                   </template>
-                </v-textarea>
+                </v-text-field>
               </v-col>
               
               <v-col cols="auto" class="pl-2 | align-item-center">
@@ -317,6 +316,18 @@ const aiDocText = computed(() => {
   } catch (error) {
     return String(aiDoc.value);
   }
+});
+
+const aiDocDisplayName = computed(() => {
+  const shot = aiDoc.value?.shot || {};
+  const src = String(shot.src || '').trim();
+  const shotType = String(shot.shotType || '').trim();
+
+  if (src && shotType) {
+    return `${src}_${shotType}.json`;
+  }
+
+  return '';
 });
 
 const errorMsg = ref({
