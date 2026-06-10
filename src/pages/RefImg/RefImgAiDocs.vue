@@ -50,11 +50,22 @@
             </div>
           </transition>
 
-          <!-- HUD: lens info -->
+          <!-- HUD: 카메라 정보 -->
           <div class="canvas-card hud-top-left">
-            <div class="hud-label">lens info</div>
+            <div class="hud-label">카메라 정보</div>
             <div class="hud-main">{{ displayLensMain }}</div>
             <div class="hud-sub">{{ displayLensSub }}</div>
+            
+            <!-- 신규 추가된 카메라 세부 속성 레이아웃 -->
+            <div class="cam-detail-grid">
+              <div class="cam-tag"><span>View</span><strong>{{ displayAngleVisual }}</strong></div>
+              <div class="cam-tag"><span>Pitch</span><strong>{{ displayPitchCal }}°</strong></div>
+              <div class="cam-tag"><span>Roll</span><strong>{{ displayRoll }}</strong></div>
+              <div class="cam-tag"><span>Orient</span><strong>{{ displayOrientation }}</strong></div>
+              <div class="cam-tag"><span>Viewpoint</span><strong>{{ displayPhotographer }}</strong></div>
+              <div class="cam-tag"><span>Env</span><strong>{{ displayIndoorOutdoor }}</strong></div>
+            </div>
+            
             <div class="hud-model">{{ displayLensModel }}</div>
           </div>
 
@@ -350,26 +361,18 @@ const tf = (v, d = 2, fb = '—') => { const n = Number(v); return isFinite(n) ?
 const displayLensMain      = computed(() => `${aiDoc.value?.geoCalib?.focalLengthMM35eq ?? '—'}mm eq · f/—`);
 const displayLensSub       = computed(() => `${aiDoc.value?.distance?.focal ?? '—'}mm · ISO —`);
 const displayLensModel     = computed(() => aiDoc.value?._source || 'Lens metadata unavailable');
+
+// 신규 및 수정된 카메라 정보 매핑
+const displayAngleVisual   = computed(() => String(aiDoc.value?.camera?.angleVisual || '—').toUpperCase());
+const displayPitchCal      = computed(() => tf(aiDoc.value?.geoCalib?.pitchDegrees ?? aiDoc.value?.camera?.pitchCal, 1));
+const displayRoll          = computed(() => aiDoc.value?.camera?.roll || '—');
+const displayOrientation   = computed(() => aiDoc.value?.camera?.orientation || '—');
+const displayPhotographer  = computed(() => aiDoc.value?.camera?.photographer || '—');
+const displayIndoorOutdoor = computed(() => aiDoc.value?.camera?.indoorOutdoor || '—');
+
+// 피사체 정보 연동 (피사체 자세 posture 반영)
 const displayShotType      = computed(() => aiDoc.value?.shot?.shotType || aiDoc.value?.shot?.typeCanonical || '—');
-const displayShotConf      = computed(() => { const m = { high: 0.9, medium: 0.6, low: 0.3 }; return tf(m[String(aiDoc.value?.distance?.confidence || '').toLowerCase()], 2); });
-const displayDistance      = computed(() => `${tf(aiDoc.value?.distance?.estimated, 2)} m`);
-const displayShoulderRatio = computed(() => tf(aiDoc.value?.framing?.coverage, 3));
 const displayBodyType      = computed(() => aiDoc.value?.poseGeom?.bodyLeaning || aiDoc.value?.camera?.posture || '—');
-const displayCamAngle      = computed(() => { const a = tf(aiDoc.value?.geoCalib?.pitchDegrees ?? aiDoc.value?.camera?.pitchCal, 1); return `${aiDoc.value?.camera?.angleVisual || '—'} · ${a}°`; });
-const displayLensType      = computed(() => aiDoc.value?.camera?.orientation || '—');
-const displayImageSize     = computed(() => { const w = aiDoc.value?.size?.w, h = aiDoc.value?.size?.h; return (!w || !h) ? '—' : `${w} x ${h}`; });
-const displayBbox          = computed(() => aiDoc.value?.pose?.bbox || '—');
-const displayNose          = computed(() => {
-  const n = Array.isArray(aiDoc.value?.pose?.kpt17) ? aiDoc.value.pose.kpt17[0] : null;
-  return Array.isArray(n) ? `x ${tf(n[0], 3)} · y ${tf(n[1], 3)}` : 'x — · y —';
-});
-const displayOverallScore  = computed(() => tf(aiDoc.value?.scores?.review, 2));
-const scorePercent         = computed(() => {
-  const s = Number(aiDoc.value?.scores?.review);
-  if (!isFinite(s)) return '0%';
-  const n = s > 1 ? s / 5 : s;
-  return `${Math.max(0, Math.min(100, n * 100)).toFixed(0)}%`;
-});
 
 // ─────────── 2D 스켈레톤 (Canvas) ───────────
 const drawSkeleton = () => {
@@ -1209,5 +1212,35 @@ watch(
   border-radius: 8px;
   overflow-y: auto;
   color: #4B5563;
+}
+
+/* 카메라 정보 세부 레이아웃 추가 */
+.cam-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(229, 231, 235, 0.7);
+}
+
+.cam-tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.cam-tag span {
+  color: #6A7282;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cam-tag strong {
+  color: #111827;
+  font-weight: 600;
 }
 </style>
