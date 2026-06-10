@@ -71,35 +71,95 @@
         </section>
 
         <!-- ── 오른쪽: 메트릭 패널 ── -->
-        <aside class="right-panel">
-
-          <!-- 분석 점수 -->
-          <div class="panel-section">
-            <div class="section-label">분석 점수</div>
-            <div class="score-row">
-              <div class="score-big">{{ displayOverallScore }}</div>
-              <div class="score-meta">overall score</div>
+        <aside class="info-panel">
+          <div class="panel-section dashboard-summary">
+            <div class="section-label">Overall Review</div>
+            <div class="summary-card">
+              <div class="main-score">
+                <span class="score-num">5.0</span>
+                <span class="score-max">/ 5.0</span>
+              </div>
+              <div class="summary-meta">
+                <div class="focus-badge">{{ props.aiData?.scores?.gfocus || 'FULL REVIEW' }}</div>
+                <div class="aesthetic-row">
+                  <span>Aesthetic Score</span>
+                  <strong class="text-highlight">{{ props.aiData?.scores?.aesthetic || 4 }}.0</strong>
+                </div>
+              </div>
             </div>
-            <div class="score-track">
-              <div class="score-fill" :style="{ width: scorePercent }" />
+          </div>
+
+          <div class="panel-section">
+            <div class="section-label">Global Quality</div>
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <div class="metric-info">
+                  <span class="metric-name">조명 (Lighting)</span>
+                  <span class="metric-val">{{ props.aiData?.scores?.global?.lighting || 5 }}</span>
+                </div>
+                <div class="metric-bar-track">
+                  <div class="metric-bar-fill" :style="{ width: ((props.aiData?.scores?.global?.lighting || 5) / 5 * 100) + '%' }"></div>
+                </div>
+              </div>
+
+              <div class="metric-box">
+                <div class="metric-info">
+                  <span class="metric-name">선명도 (Sharpness)</span>
+                  <span class="metric-val">{{ props.aiData?.scores?.global?.sharpness || 5 }}</span>
+                </div>
+                <div class="metric-bar-track">
+                  <div class="metric-bar-fill" :style="{ width: ((props.aiData?.scores?.global?.sharpness || 5) / 5 * 100) + '%' }"></div>
+                </div>
+              </div>
+
+              <div class="metric-box">
+                <div class="metric-info">
+                  <span class="metric-name">구도 (Composition)</span>
+                  <span class="metric-val text-four">{{ props.aiData?.scores?.global?.composition || 4 }}</span>
+                </div>
+                <div class="metric-bar-track">
+                  <div class="metric-bar-fill fill-four" :style="{ width: ((props.aiData?.scores?.global?.composition || 4) / 5 * 100) + '%' }"></div>
+                </div>
+              </div>
+
+              <div class="metric-box">
+                <div class="metric-info">
+                  <span class="metric-name">배경 깔끔도 (Background)</span>
+                  <span class="metric-val text-four">{{ props.aiData?.scores?.global?.background_cleanliness || 4 }}</span>
+                </div>
+                <div class="metric-bar-track">
+                  <div class="metric-bar-fill fill-four" :style="{ width: ((props.aiData?.scores?.global?.background_cleanliness || 4) / 5 * 100) + '%' }"></div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- 카메라 -->
           <div class="panel-section">
-            <div class="section-label">카메라</div>
-            <div class="metric"><span>camera angle</span><strong>{{ displayCamAngle }}</strong></div>
-            <div class="metric"><span>focal type</span><strong>{{ displayLensType }}</strong></div>
-            <div class="metric"><span>image size</span><strong>{{ displayImageSize }}</strong></div>
-            <div class="metric"><span>bbox</span><strong class="mono">{{ displayBbox }}</strong></div>
-          </div>
+            <div class="section-label">Garment Detail Analysis</div>
+            <div class="garment-container">
+              <div class="garment-column">
+                <div class="garment-header top-style">TOP</div>
+                <div class="garment-body">
+                  <div class="garment-row"><span>Color</span><strong>{{ props.aiData?.scores?.topColor || 5 }}</strong></div>
+                  <div class="garment-row"><span>Detail</span><strong>{{ props.aiData?.scores?.topDetail || 5 }}</strong></div>
+                  <div class="garment-row"><span>Silhouette</span><strong>{{ props.aiData?.scores?.topSilhouette || 5 }}</strong></div>
+                  <div class="garment-divider"></div>
+                  <div class="garment-row total-row"><span>Overall</span><strong>{{ props.aiData?.scores?.topOverall || 5 }}</strong></div>
+                </div>
+              </div>
 
-          <!-- AI 원본 JSON -->
-          <div class="panel-section panel-section--json">
-            <div class="section-label">AI 원본 데이터 JSON</div>
-            <pre class="json-box">{{ prettyAiDocs }}</pre>
+              <div class="garment-column">
+                <div class="garment-header bot-style">BOTTOM</div>
+                <div class="garment-body">
+                  <div class="garment-row"><span>Color</span><strong>{{ props.aiData?.scores?.botColor || 5 }}</strong></div>
+                  <div class="garment-row"><span>Detail</span><strong class="text-four">{{ props.aiData?.scores?.botDetail || 4 }}</strong></div>
+                  <div class="garment-row"><span>Silhouette</span><strong>{{ props.aiData?.scores?.botSilhouette || 5 }}</strong></div>
+                  <div class="garment-divider"></div>
+                  <div class="garment-row total-row"><span>Overall</span><strong>{{ props.aiData?.scores?.botOverall || 5 }}</strong></div>
+                </div>
+              </div>
+            </div>
           </div>
-
         </aside>
       </div>
     </v-card-text>
@@ -957,5 +1017,197 @@ watch(
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 인포그래픽 대시보드 스타일 */
+.dashboard-summary {
+  background: #F9FAFB;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.main-score {
+  display: flex;
+  align-items: baseline;
+}
+
+.score-num {
+  font-size: 36px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.score-max {
+  font-size: 14px;
+  color: #9CA3AF;
+  margin-left: 4px;
+}
+
+.summary-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.focus-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #111827;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aesthetic-row {
+  font-size: 12px;
+  color: #4B5563;
+  display: flex;
+  gap: 6px;
+}
+
+.text-highlight {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* 글로벌 메트릭스 */
+.metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.metric-val {
+  font-weight: 700;
+  color: #111827;
+}
+
+.metric-val.text-four {
+  color: #6B7280;
+}
+
+.metric-bar-track {
+  width: 100%;
+  height: 6px;
+  background: #F3F4F6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.metric-bar-fill {
+  height: 100%;
+  background: #111827;
+  border-radius: 999px;
+  transition: width 0.5s ease-out;
+}
+
+.metric-bar-fill.fill-four {
+  background: #9CA3AF;
+}
+
+/* 상하의 비교 패널 */
+.garment-container {
+  display: flex;
+  gap: 12px;
+}
+
+.garment-column {
+  flex: 1;
+  background: #F9FAFB;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  overflow: hidden;
+}
+
+.garment-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 0;
+  letter-spacing: 0.05em;
+}
+
+.garment-header.top-style {
+  background: #F3F4F6;
+  color: #111827;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.garment-header.bot-style {
+  background: #E5E7EB;
+  color: #374151;
+  border-bottom: 1px solid #D1D5DB;
+}
+
+.garment-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.garment-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #4B5563;
+}
+
+.garment-row strong {
+  color: #111827;
+}
+
+.garment-row strong.text-four {
+  color: #6B7280;
+}
+
+.garment-divider {
+  height: 1px;
+  background: #E5E7EB;
+  margin: 4px 0;
+}
+
+.garment-row.total-row {
+  font-weight: 700;
+  color: #111827;
+  font-size: 12px;
+}
+
+/* JSON 뷰어 축소 스타일 */
+.json-viewer {
+  max-height: 120px;
+  font-size: 10px;
+  background: #F3F4F6;
+  padding: 8px;
+  border-radius: 8px;
+  overflow-y: auto;
+  color: #4B5563;
 }
 </style>
