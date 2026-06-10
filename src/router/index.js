@@ -63,8 +63,8 @@ const routes = [
   },
   {
     path: '/products/create',
-    name: 'ProdForm',
-    component: () => import(/* webpackChunkName: "prod-form" */ "@/pages/Product/ProdForm.vue")
+    name: 'ProdCreate',
+    component: () => import(/* webpackChunkName: "prod-create" */ "@/pages/Product/ProdCreate.vue")
   },
   {
     path: '/system',
