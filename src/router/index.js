@@ -96,6 +96,11 @@ const routes = [
     name: 'CategoryList',
     component: () => import(/* webpackChunkName: "category-list" */ "@/pages/Category/CategoryList.vue")
   },
+  {
+    path: '/simulator',
+    name: 'Simulator',
+    component: () => import(/* webpackChunkName: "simulator" */ "@/pages/Debug/CameraSimulator.vue")
+  },
 ];
 
 const router = createRouter({

@@ -206,7 +206,7 @@ const search = ref({
 
 const pageNation = ref({
   current: 1,
-  limit: 10,
+  limit: 40,
 });
 
 const totalCount = ref(0);

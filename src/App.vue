@@ -220,13 +220,23 @@ const publicPages = ['/login', '/register'];
 // 페이지별 네비게이션 설정
 const pageList = ref([
   {
-    name: '데이터 관리',
+    name: '개발자 도구',
     child: [
       {
         page: 'SysList',
         name: '시스템 모니터링',
         path: '/system',
       },
+      {
+        page: 'Simulator',
+        name: '카메라 시뮬레이터',
+        path: '/simulator',
+      },
+    ],
+  },
+  {
+    name: '데이터 관리',
+    child: [
       {
         page: 'TagList',
         name: '태그 관리',
