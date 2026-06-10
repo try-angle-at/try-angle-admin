@@ -677,6 +677,8 @@ export async function updateSnap(params = {}) {
       comment: params.comment,
       viewCnt: params.viewCnt,
       gender: params.gender,
+      prodId: params.prodId,
+      imgId: params.imgId,
     }),
   });
 }
