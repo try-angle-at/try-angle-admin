@@ -181,6 +181,15 @@ function parseOptionalNumber(value) {
   return Number.isNaN(parsedValue) ? null : parsedValue;
 }
 
+function goToSnapDetail(value) {
+  const snapId = Number(value);
+  if (!Number.isFinite(snapId) || snapId <= 0) {
+    return;
+  }
+
+  navigateTo(router, `/snaps/${snapId}`);
+}
+
 async function fetchListSnaps() {
   isLoading.value = true;
 
@@ -239,7 +248,7 @@ function handleClickBtn(action, value) {
       break;
 
     case 'goToDetail':
-      navigateTo(router, `/snaps/${value}`);
+      goToSnapDetail(value);
       break;
 
     case 'goToProductDetail':
@@ -262,11 +271,7 @@ function handleClickBtn(action, value) {
 
 function handleRowClick({ item }) {
   const row = item?.raw ?? item;
-  if (!row?.id) {
-    return;
-  }
-
-  handleClickBtn('goToDetail', row.id);
+  goToSnapDetail(row?.id);
 }
 
 function handlePageChange(nextPage) {
