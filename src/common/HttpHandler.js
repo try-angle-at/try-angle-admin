@@ -630,6 +630,14 @@ export async function endSession(params = {}) {
   });
 }
 
+export async function getSessionDetail(params = {}) {
+  return request('POST', '/session/detail', {
+    body: compact({
+      id: params.id ?? params.sessionId,
+    }),
+  });
+}
+
 // ----- 스냅 관련 API ----- //
 export async function listSnaps(params = {}) {
   return request('POST', '/snap/list', {
@@ -746,6 +754,8 @@ export async function flushSnapshotSession(params = {}) {
     }),
   });
 }
+
+
 
 // 사용 예시:
 // import { getMyProfile, updateProfile, getMeetings, createMeeting } from '@/common/HttpHandler.js';
