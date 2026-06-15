@@ -2,9 +2,9 @@
     <v-container fluid class="sys-detail pa-0" style="height: 100vh; overflow: hidden;">
         <v-row no-gutters style="height: 100%;">
 
-            <!-- 좌측 패널: 레퍼런스 이미지 -->
-            <v-col cols="3" class="ref-panel | d-flex | flex-column" style="border-right: 1px solid #2a2a3a; overflow: hidden;">
-                <v-row no-gutters class="align-item-center | px-4 | py-3" style="border-bottom: 1px solid #1e1e2e; flex-shrink: 0;">
+            <!-- 좌측 패널: 레퍼런스 이미지 + 스켈레톤 -->
+            <v-col cols="3" class="ref-panel | d-flex | flex-column" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
+                <v-row no-gutters class="align-item-center | px-4 | py-3" style="border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
                     <v-icon size="16" color="#6A7282" class="mr-1">mdi-image-outline</v-icon>
                     <span class="info-text">Reference Image</span>
                 </v-row>
@@ -15,16 +15,25 @@
                     <span class="info-text mt-2">불러오는 중...</span>
                 </v-row>
 
-                <!-- 레퍼런스 이미지 정보 -->
+                <!-- 레퍼런스 이미지 + 스켈레톤 오버레이 -->
                 <template v-else-if="refImgDetail.imgUrl">
+                    <!-- 이미지 + canvas 오버레이 -->
                     <v-row no-gutters class="px-4 | pt-3 | pb-2" style="flex-shrink: 0;">
-                        <v-img
-                            :src="refImgDetail.imgUrl"
-                            aspect-ratio="1"
-                            class="img-frame"
-                        />
+                        <div class="image-overlay-wrap">
+                            <img
+                                ref="imageRef"
+                                :src="refImgDetail.imgUrl"
+                                class="canvas-image-native"
+                                style="opacity: 0.35;"
+                                alt="reference"
+                                @load="handleImageLoad"
+                            />
+                            <canvas ref="overlayRef" class="overlay-canvas" />
+
+                        </div>
                     </v-row>
 
+                    <!-- 메타 정보 -->
                     <v-row no-gutters class="px-4 | flex-grow-1 | overflow-y-auto | flex-column" style="scrollbar-width: thin;">
                         <v-row no-gutters class="info-row | mt-2">
                             <v-icon color="#6A7282" size="14" class="mr-1">mdi-pound</v-icon>
@@ -48,6 +57,25 @@
                             >{{ tag }}</v-chip>
                         </v-row>
 
+                        <!-- 스켈레톤 탭일 때 키포인트 신뢰도 요약 -->
+                        <template v-if="poseOverlay">
+                            <v-row no-gutters class="mt-3" style="border-top: 0.7px solid #E5E8EB; padding-top: 8px;">
+                                <v-row no-gutters class="info-row | mb-1">
+                                    <v-icon color="#6A7282" size="13" class="mr-1">mdi-human</v-icon>
+                                    <span class="info-text">키포인트 {{ poseOverlay.points.length }}개</span>
+                                </v-row>
+                                <v-row no-gutters style="gap: 4px; flex-wrap: wrap;">
+                                    <v-chip
+                                        v-for="grp in skeletonGroups"
+                                        :key="grp.key"
+                                        size="x-small"
+                                        variant="outlined"
+                                        :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
+                                    >{{ grp.label }}</v-chip>
+                                </v-row>
+                            </v-row>
+                        </template>
+
                         <v-row v-if="refImgDetail.cDate" no-gutters class="info-row | mt-3">
                             <v-icon color="#6A7282" size="14" class="mr-1">mdi-calendar-outline</v-icon>
                             <span class="info-text">{{ refImgDetail.cDate }}</span>
@@ -66,7 +94,7 @@
             <v-col cols="9" class="d-flex | flex-column" style="overflow: hidden;">
 
                 <!-- 상단 헤더 -->
-                <v-row no-gutters class="align-item-center | justify-space-between | px-6 | py-3" style="border-bottom: 1px solid #2a2a3a; flex-shrink: 0;">
+                <v-row no-gutters class="align-item-center | justify-space-between | px-6 | py-3" style="border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
                     <v-col class="d-flex | align-item-center">
                         <v-btn icon variant="text" size="small" @click="$router.back()" class="mr-2">
                             <v-icon color="#6A7282">mdi-arrow-left</v-icon>
@@ -92,7 +120,7 @@
                 </v-row>
 
                 <!-- 세션 고정 정보 카드 행 -->
-                <v-row no-gutters class="px-6 | py-4 | gap-16" style="flex-shrink: 0; border-bottom: 1px solid #1e1e2e;">
+                <v-row no-gutters class="px-6 | py-4 | gap-16" style="flex-shrink: 0; border-bottom: 1px solid #E5E8EB;">
                     <v-col>
                         <v-row no-gutters justify="start">
                             <v-label class="ml-1">사용자</v-label>
@@ -313,6 +341,7 @@ const refImgDetail = ref({
     ctgName: null,
     kwd: [],
     imgUrl: '',
+    aiDoc: null,
     cDate: '',
     uDate: '',
 });
@@ -320,8 +349,54 @@ const refImgDetail = ref({
 const isSessionLoading = ref(false);
 const isRefLoading     = ref(false);
 
-const chartCanvas    = ref(null);
-let   chartInstance  = null;
+// ----- 스켈레톤 관련 ----- //
+const imageRef   = ref(null);
+const overlayRef = ref(null);
+const activeTab  = ref('SKL'); // 항상 SKL
+
+// COCO-17 연결 (RefImgAiDocs 동일)
+const COCO17 = [
+    [0,1],[0,2],[1,3],[2,4],
+    [5,6],[5,7],[7,9],[6,8],[8,10],
+    [5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16],
+];
+const FOOT = [[15,17],[17,18],[15,19],[16,20],[20,21],[16,22]];
+const HAND = [
+    [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20],
+];
+const FACE = (() => {
+    const c = [];
+    for (let i = 23; i < 39; i++) c.push([i, i + 1]);
+    for (let i = 40; i < 44; i++) c.push([i, i + 1]);
+    for (let i = 45; i < 49; i++) c.push([i, i + 1]);
+    for (let i = 50; i < 53; i++) c.push([i, i + 1]);
+    for (let i = 54; i < 58; i++) c.push([i, i + 1]);
+    c.push([53, 54]);
+    for (let i = 59; i < 64; i++) c.push([i, i + 1]); c.push([64, 59]);
+    for (let i = 65; i < 70; i++) c.push([i, i + 1]); c.push([70, 65]);
+    for (let i = 71; i < 82; i++) c.push([i, i + 1]); c.push([82, 71]);
+    for (let i = 83; i < 90; i++) c.push([i, i + 1]); c.push([90, 83]);
+    return c;
+})();
+const L_HAND = HAND.map(([a, b]) => [91 + a,  91 + b]);
+const R_HAND = HAND.map(([a, b]) => [112 + a, 112 + b]);
+
+const GRP_CSS = { body: '#00B7FF', foot: '#34D399', face: '#A78BFA', hand: '#FB923C' };
+const grpOf   = i => (i <= 16 ? 'body' : i <= 22 ? 'foot' : i <= 90 ? 'face' : 'hand');
+const clamp   = (v, a, b) => Math.min(b, Math.max(a, v));
+
+const skeletonGroups = [
+    { key: 'body', label: 'Body',  color: GRP_CSS.body },
+    { key: 'foot', label: 'Foot',  color: GRP_CSS.foot },
+    { key: 'face', label: 'Face',  color: GRP_CSS.face },
+    { key: 'hand', label: 'Hand',  color: GRP_CSS.hand },
+];
+
+// ----- 차트 관련 ----- //
+const chartCanvas   = ref(null);
+let   chartInstance = null;
 
 const availableMetrics = [
     { key: 'score',       label: '종합 점수' },
@@ -361,8 +436,8 @@ const statusColor = computed(() => {
 });
 
 const platformLabel = computed(() => {
-    const platform    = session.value.device?.platform?.toUpperCase() || '—';
-    const appVersion  = session.value.device?.appVersion;
+    const platform   = session.value.device?.platform?.toUpperCase() || '—';
+    const appVersion = session.value.device?.appVersion;
     return appVersion ? `${platform}  v${appVersion}` : platform;
 });
 
@@ -390,6 +465,71 @@ const snapshotTableItems = computed(() =>
     }))
 );
 
+// aiDoc → 키포인트 파싱 (RefImgAiDocs 동일 로직)
+const decodeHex = h => {
+    const v = parseInt(h, 16);
+    return isFinite(v) ? v / 10000 : 0;
+};
+
+const parsePoseKpHex = str => {
+    const s = String(str || '').trim();
+    if (!s) return [];
+    const pts = [];
+    const n = Math.floor(s.length / 12);
+    for (let i = 0; i < n; i++) {
+        const o = i * 12;
+        pts.push({
+            x:    decodeHex(s.slice(o,      o + 4)),
+            y:    decodeHex(s.slice(o + 4,  o + 8)),
+            conf: decodeHex(s.slice(o + 8,  o + 12)),
+        });
+    }
+    return pts;
+};
+
+const parseKpt17 = v => {
+    if (!Array.isArray(v)) return [];
+    return v.slice(0, 17)
+        .map(it => (!Array.isArray(it) ? null : { x: Number(it[0]), y: Number(it[1]), conf: Number(it[2] ?? 1) }))
+        .filter(it => it && isFinite(it.x) && isFinite(it.y));
+};
+
+const parseBboxHex = bh => {
+    const v = String(bh || '').trim();
+    if (v.length < 16) return null;
+    return {
+        x: decodeHex(v.slice(0, 4)),
+        y: decodeHex(v.slice(4, 8)),
+        w: decodeHex(v.slice(8, 12)),
+        h: decodeHex(v.slice(12, 16)),
+    };
+};
+
+const normalizeKpsIntoBbox = (pts, bbox) => {
+    const oob = pts.some(p => p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1);
+    if (!oob || !bbox) return pts;
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const rX = Math.max(maxX - minX, 1e-6), rY = Math.max(maxY - minY, 1e-6);
+    return pts.map(p => ({
+        x:    clamp(bbox.x + ((p.x - minX) / rX) * bbox.w, 0, 1),
+        y:    clamp(bbox.y + ((p.y - minY) / rY) * bbox.h, 0, 1),
+        conf: clamp(Number(p.conf ?? 0), 0, 1),
+    }));
+};
+
+const poseOverlay = computed(() => {
+    const pose    = refImgDetail.value.aiDoc?.pose;
+    if (!pose) return null;
+    const bbox    = parseBboxHex(pose.bbox);
+    const fromHex = parsePoseKpHex(pose.kp);
+    const from17  = parseKpt17(pose.kpt17);
+    const points  = fromHex.length ? fromHex : from17;
+    if (!points.length) return null;
+    return { points: normalizeKpsIntoBbox(points, bbox), bbox };
+});
+
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
     emit('show-right-btn');
@@ -401,17 +541,26 @@ onMounted(() => {
     });
 
     fetchSessionDetail();
+    window.addEventListener('resize', drawSkeleton);
 });
 
 onBeforeUnmount(() => {
     if (chartInstance) {
         chartInstance.destroy();
     }
+    window.removeEventListener('resize', drawSkeleton);
 });
 
 watch(activeMetrics, () => {
     nextTick(renderChart);
 }, { deep: true });
+
+watch(
+    () => refImgDetail.value.aiDoc,
+    () => {
+        nextTick(drawSkeleton);
+    },
+);
 
 // ----- 함수 정의 ----- //
 async function fetchSessionDetail() {
@@ -496,12 +645,13 @@ async function fetchRefImgDetail(imgId) {
             id:      detail.imgId  ?? null,
             title:   detail.title  || '',
             desc:    detail.desc   || '',
-            ctgId:   detail.ctg?.ctgId  ?? null,
+            ctgId:   detail.ctg?.ctgId   ?? null,
             ctgName: detail.ctg?.ctgName || null,
             kwd: Array.isArray(detail.kwd)
                 ? detail.kwd.map((code) => String(code || '').trim()).filter(Boolean)
                 : [],
             imgUrl: detail.imgUrl || '',
+            aiDoc:  detail.aiDoc  ?? null,
             cDate:  util.formatUnixDateTime(detail.cDate),
             uDate:  util.formatUnixDateTime(detail.uDate),
         };
@@ -510,6 +660,96 @@ async function fetchRefImgDetail(imgId) {
     } finally {
         isRefLoading.value = false;
     }
+}
+
+// ----- 스켈레톤 그리기 (RefImgAiDocs 동일 로직) ----- //
+function drawSkeleton() {
+    const canvas = overlayRef.value;
+    const image  = imageRef.value;
+    const pose   = poseOverlay.value;
+
+    if (!canvas || !image) return;
+
+    const W = image.clientWidth;
+    const H = image.clientHeight;
+    if (!W || !H) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width  = `${W}px`;
+    canvas.style.height = `${H}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    if (!pose?.points?.length) return;
+
+    const pts = pose.points;
+    const thr = 0.05;
+
+    // bbox 점선 사각형
+    if (pose.bbox) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(16,185,129,0.95)';
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(pose.bbox.x * W, pose.bbox.y * H, pose.bbox.w * W, pose.bbox.h * H);
+        ctx.restore();
+    }
+
+    // 연결선 그리기
+    const drawConn = (conns, color, lw) => {
+        conns.forEach(([si, ei]) => {
+            const s = pts[si], e = pts[ei];
+            if (!s || !e) return;
+            const a = Math.min(s.conf ?? 0, e.conf ?? 0);
+            ctx.globalAlpha = a < thr ? 0.08 : clamp(a, 0.2, 1);
+            ctx.strokeStyle = color;
+            ctx.lineWidth   = lw;
+            ctx.beginPath();
+            ctx.moveTo(s.x * W, s.y * H);
+            ctx.lineTo(e.x * W, e.y * H);
+            ctx.stroke();
+        });
+    };
+
+    ctx.save();
+    drawConn(COCO17, GRP_CSS.body, 2);
+    drawConn(FOOT,   GRP_CSS.foot, 1.8);
+    drawConn(FACE,   GRP_CSS.face, 1.0);
+    drawConn(L_HAND, GRP_CSS.hand, 1.4);
+    drawConn(R_HAND, GRP_CSS.hand, 1.4);
+    ctx.restore();
+
+    // 관절 점
+    ctx.save();
+    pts.forEach((p, i) => {
+        const g = grpOf(i);
+        const r = g === 'body' ? 3.5 : g === 'foot' ? 3 : 2;
+        const a = Number(p.conf ?? 0);
+        ctx.globalAlpha = a < thr ? 0.15 : clamp(a, 0.25, 1);
+        ctx.fillStyle   = GRP_CSS[g];
+        ctx.beginPath();
+        ctx.arc(p.x * W, p.y * H, r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.restore();
+}
+
+function clearSkeleton() {
+    const canvas = overlayRef.value;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function handleImageLoad() {
+    drawSkeleton();
 }
 
 async function renderChart() {
@@ -688,12 +928,30 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     font-family: Pretendard;
 }
 
-.img-frame {
+/* 이미지 + 스켈레톤 오버레이 */
+.image-overlay-wrap {
+    position: relative;
+    display: inline-block;
     width: 100%;
-    background-color: #ffffff;
+    line-height: 0;
+}
+
+.canvas-image-native {
+    display: block;
+    width: 100%;
+    object-fit: contain;
     border: 0.7px solid #E5E8EB;
     border-radius: 8px;
+    background-color: #ffffff;
 }
+
+.overlay-canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: 8px;
+}
+
 
 .ref-panel {
     background-color: #fafafa;
