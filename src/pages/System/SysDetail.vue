@@ -1,178 +1,81 @@
 <template>
-    <v-container fluid class="sys-detail pa-0" style="height: 100vh; overflow: hidden;">
+    <v-container fluid class="sys-detail pa-0" style="height: 100%; overflow: hidden;">
         <v-row no-gutters style="height: 100%;">
 
             <!-- 좌측 패널: 레퍼런스 이미지 + 스켈레톤 -->
-            <v-col cols="3" class="ref-panel | d-flex | flex-column" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
-                <v-row no-gutters class="align-item-center | px-4 | py-3" style="border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
-                    <v-icon size="16" color="#6A7282" class="mr-1">mdi-image-outline</v-icon>
-                    <span class="info-text">Reference Image</span>
-                </v-row>
+<v-col cols="3" class="ref-panel | d-flex | flex-column" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
+    <v-row no-gutters class="align-center | px-4 | py-3" style="max-height: 60px; height: 60px; border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
+        <v-icon size="18" color="#4A5565" class="mr-2">mdi-image-outline</v-icon>
+        <span class="header-id-text">ID: {{ refImgDetail.id || session.imgId }}</span>
+    </v-row>
 
-                <!-- 로딩 -->
-                <v-row v-if="isRefLoading" no-gutters class="flex-grow-1 | align-center | justify-center | flex-column">
-                    <v-progress-circular indeterminate color="#6A7282" size="32" />
-                    <span class="info-text mt-2">불러오는 중...</span>
-                </v-row>
+    <v-row v-if="isRefLoading" no-gutters class="flex-grow-1 | align-center | justify-center | flex-column">
+        <v-progress-circular indeterminate color="#3B82F6" size="36" width="3" />
+        <span class="info-text mt-3 text-secondary">데이터를 불러오는 중입니다...</span>
+    </v-row>
 
-                <!-- 레퍼런스 이미지 + 스켈레톤 오버레이 -->
-                <template v-else-if="refImgDetail.imgUrl">
-                    <!-- 이미지 + canvas 오버레이 -->
-                    <v-row no-gutters class="px-4 | pt-3 | pb-2" style="flex-shrink: 0;">
-                        <div class="image-overlay-wrap">
-                            <img
-                                ref="imageRef"
-                                :src="refImgDetail.imgUrl"
-                                class="canvas-image-native"
-                                style="opacity: 0.35;"
-                                alt="reference"
-                                @load="handleImageLoad"
-                            />
-                            <canvas ref="overlayRef" class="overlay-canvas" />
+    <template v-else-if="refImgDetail.imgUrl">
+        <v-row no-gutters class="ref-img-canvas | pa-4 | justify-center | align-center" style="flex-shrink: 0;">
+            <div class="canvas-fixed-box">
+                <div class="image-overlay-wrap">
+                    <img
+                        ref="imageRef"
+                        :src="refImgDetail.imgUrl"
+                        class="canvas-image-native"
+                        style="opacity: 0.4;"
+                        alt="reference"
+                        @load="handleImageLoad"
+                    />
+                    <canvas ref="overlayRef" class="overlay-canvas" />
+                </div>
+            </div>
+        </v-row>
 
-                        </div>
-                    </v-row>
+        <div class="info-detail-container | px-4 | pb-4 | flex-grow-1 | overflow-y-auto" style="scrollbar-width: thin;">
+            
+            <div v-if="refImgDetail.title" class="info-title-block | mb-3">
+                <span class="ref-img-title">{{ refImgDetail.title }}</span>
+            </div>
 
-                    <!-- 메타 정보 -->
-                    <v-row no-gutters class="px-4 | flex-grow-1 | overflow-y-auto | flex-column" style="scrollbar-width: thin;">
-                        <v-row no-gutters class="info-row | mt-2">
-                            <v-icon color="#6A7282" size="14" class="mr-1">mdi-pound</v-icon>
-                            <span class="info-text">#{{ refImgDetail.id || session.imgId }}</span>
-                        </v-row>
+            <div v-if="refImgDetail.ctgName || (refImgDetail.kwd && refImgDetail.kwd.length)" class="chip-group-block | mb-4">
+                <v-chip v-if="refImgDetail.ctgName" size="small" class="category-chip | mr-1 | mb-1">
+                    {{ refImgDetail.ctgName }}
+                </v-chip>
+                <v-chip
+                    v-for="tag in refImgDetail.kwd"
+                    :key="tag"
+                    size="small"
+                    variant="outlined"
+                    class="tag-chip | mr-1 | mb-1"
+                >
+                    # {{ tag }}
+                </v-chip>
+            </div>
+        </div>
+    </template>
 
-                        <v-row v-if="refImgDetail.title" no-gutters class="info-row | mt-1">
-                            <span class="info-text">{{ refImgDetail.title }}</span>
-                        </v-row>
-
-                        <v-row v-if="refImgDetail.ctgName" no-gutters class="mt-2">
-                            <v-chip size="x-small" class="category-chip">{{ refImgDetail.ctgName }}</v-chip>
-                        </v-row>
-
-                        <v-row v-if="refImgDetail.kwd && refImgDetail.kwd.length" no-gutters class="mt-2" style="gap: 4px; flex-wrap: wrap;">
-                            <v-chip
-                                v-for="tag in refImgDetail.kwd"
-                                :key="tag"
-                                size="x-small"
-                                class="tag-chip"
-                            >{{ tag }}</v-chip>
-                        </v-row>
-
-                        <!-- 스켈레톤 탭일 때 키포인트 신뢰도 요약 -->
-                        <template v-if="poseOverlay">
-                            <v-row no-gutters class="mt-3" style="border-top: 0.7px solid #E5E8EB; padding-top: 8px;">
-                                <v-row no-gutters class="info-row | mb-1">
-                                    <v-icon color="#6A7282" size="13" class="mr-1">mdi-human</v-icon>
-                                    <span class="info-text">키포인트 {{ poseOverlay.points.length }}개</span>
-                                </v-row>
-                                <v-row no-gutters style="gap: 4px; flex-wrap: wrap;">
-                                    <v-chip
-                                        v-for="grp in skeletonGroups"
-                                        :key="grp.key"
-                                        size="x-small"
-                                        variant="outlined"
-                                        :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
-                                    >{{ grp.label }}</v-chip>
-                                </v-row>
-                            </v-row>
-                        </template>
-
-                        <v-row v-if="refImgDetail.cDate" no-gutters class="info-row | mt-3">
-                            <v-icon color="#6A7282" size="14" class="mr-1">mdi-calendar-outline</v-icon>
-                            <span class="info-text">{{ refImgDetail.cDate }}</span>
-                        </v-row>
-                    </v-row>
-                </template>
-
-                <!-- 데이터 없음 -->
-                <v-row v-else no-gutters class="flex-grow-1 | align-center | justify-center | flex-column">
-                    <v-icon size="36" color="#4A5565">mdi-image-off-outline</v-icon>
-                    <span class="info-text mt-2">이미지 정보 없음</span>
-                </v-row>
-            </v-col>
+    <v-row v-else no-gutters class="flex-grow-1 | align-center | justify-center | flex-column">
+        <v-icon size="42" color="#9CA3AF">mdi-image-off-outline</v-icon>
+        <span class="info-text mt-3 text-secondary font-weight-medium">등록된 이미지 정보가 없습니다.</span>
+    </v-row>
+</v-col>
 
             <!-- 중앙 + 우측 메인 영역 -->
             <v-col cols="9" class="d-flex | flex-column" style="overflow: hidden;">
 
                 <!-- 상단 헤더 -->
-                <v-row no-gutters class="align-item-center | justify-space-between | px-6 | py-3" style="border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
-                    <v-col class="d-flex | align-item-center">
-                        <v-btn icon variant="text" size="small" @click="$router.back()" class="mr-2">
-                            <v-icon color="#6A7282">mdi-arrow-left</v-icon>
-                        </v-btn>
-                        <v-row no-gutters class="flex-column">
-                            <span class="title-font">세션 상세</span>
-                            <span class="info-text" style="font-family: monospace;">{{ session.id || '—' }}</span>
-                        </v-row>
-                    </v-col>
-                    <v-col cols="auto" class="d-flex | align-item-center">
-                        <v-chip
-                            :color="statusColor"
-                            variant="tonal"
-                            size="small"
-                            class="mr-3"
-                        >{{ statusLabel }}</v-chip>
-                        <v-btn
-                            @click="fetchSessionDetail"
-                            variant="outlined"
-                            class="thin-btn | outline-grey | btn-width"
-                        >새로고침</v-btn>
-                    </v-col>
-                </v-row>
-
-                <!-- 세션 고정 정보 카드 행 -->
-                <v-row no-gutters class="px-6 | py-4 | gap-16" style="flex-shrink: 0; border-bottom: 1px solid #E5E8EB;">
-                    <v-col>
-                        <v-row no-gutters justify="start">
-                            <v-label class="ml-1">사용자</v-label>
-                        </v-row>
-                        <v-row no-gutters justify="center" class="mt-1">
-                            <v-text-field
-                                :model-value="session.userName || '—'"
-                                class="inputbox"
-                                readonly
-                                variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                            />
-                        </v-row>
-                    </v-col>
-                    <v-col>
-                        <v-row no-gutters justify="start">
-                            <v-label class="ml-1">플랫폼</v-label>
-                        </v-row>
-                        <v-row no-gutters justify="center" class="mt-1">
-                            <v-text-field
-                                :model-value="platformLabel"
-                                class="inputbox"
-                                readonly
-                                variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                            />
-                        </v-row>
-                    </v-col>
-                    <v-col>
-                        <v-row no-gutters justify="start">
-                            <v-label class="ml-1">시작 시각</v-label>
-                        </v-row>
-                        <v-row no-gutters justify="center" class="mt-1">
-                            <v-text-field
-                                :model-value="session.sDate || '—'"
-                                class="inputbox"
-                                readonly
-                                variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                            />
-                        </v-row>
-                    </v-col>
-                    <v-col>
-                        <v-row no-gutters justify="start">
-                            <v-label class="ml-1">세션 길이</v-label>
-                        </v-row>
-                        <v-row no-gutters justify="center" class="mt-1">
-                            <v-text-field
-                                :model-value="sessionDuration"
-                                class="inputbox"
-                                readonly
-                                variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                            />
-                        </v-row>
-                    </v-col>
+                <v-row no-gutters class="align-item-center | justify-end" style="max-height: 60px; height: 60px; border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
+                    <v-chip
+                        :color="statusColor"
+                        variant="tonal"
+                        size="small"
+                        class="mr-3"
+                    >{{ statusLabel }}</v-chip>
+                    <v-btn
+                        @click="fetchSessionDetail"
+                        variant="outlined"
+                        class="thin-btn | outline-grey | btn-width | mr-2"
+                    >새로고침</v-btn>
                 </v-row>
 
                 <!-- 로딩 -->
@@ -190,26 +93,9 @@
                 <v-row v-else no-gutters class="flex-grow-1" style="min-height: 0; overflow: hidden;">
 
                     <!-- 중앙: 실시간 pose 캔버스 + 타임라인 차트 -->
-                    <v-col cols="8" class="d-flex | flex-column" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
-
-                        <!-- pose 캔버스 영역 -->
-                        <v-row no-gutters class="flex-column | flex-grow-1 | px-5 | pt-4 | pb-3" style="min-height: 0;">
-                            <v-row no-gutters class="align-item-center | justify-space-between | mb-2" style="flex-shrink: 0;">
-                                <v-row no-gutters class="align-item-center">
-                                    <v-icon size="15" color="#6A7282" class="mr-1">mdi-human</v-icon>
-                                    <span class="info-text">실시간 Pose 캡처</span>
-                                </v-row>
-                                <v-row no-gutters class="align-item-center" style="gap: 4px; flex-wrap: wrap;">
-                                    <v-chip
-                                        v-for="grp in skeletonGroups"
-                                        :key="grp.key"
-                                        size="x-small"
-                                        variant="outlined"
-                                        :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
-                                    >{{ grp.label }}</v-chip>
-                                </v-row>
-                            </v-row>
-
+                    <v-col cols="8" class="d-flex | flex-column central-panel" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
+                        <!-- 캔버스 -->
+                        <div class="pose-stage-wrapper px-3 pb-3" style="min-height: 0;">
                             <div class="pose-stage">
                                 <div class="pose-stage-inner">
                                     <canvas ref="liveCanvasRef" class="live-pose-canvas" />
@@ -220,24 +106,33 @@
                                 </div>
 
                                 <!-- HUD: 현재 프레임 카메라 정보 -->
-                                <div class="pose-hud pose-hud-tl">
+                                <div class="pose-hud | pose-hud-tl">
                                     <div class="pose-hud-label">FRAME</div>
                                     <div class="pose-hud-main">#{{ currentSnapshot?.fseq ?? '—' }}</div>
                                     <div class="pose-hud-sub">{{ currentFrameTime }}</div>
                                 </div>
-                                <div class="pose-hud pose-hud-tr">
+                                <div class="pose-hud | pose-hud-tr">
+                                    <v-row no-gutters class="align-item-center" style="gap: 4px; flex-wrap: wrap;">
+                                        <v-chip
+                                            v-for="grp in skeletonGroups"
+                                            :key="grp.key"
+                                            size="x-small"
+                                            variant="outlined"
+                                            :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
+                                        >{{ grp.label }}</v-chip>
+                                    </v-row>
+                                </div>
+                                <div class="pose-hud | pose-hud-bl">
                                     <div class="pose-hud-row"><span>phase</span><strong>{{ currentSnapshot?.category || '—' }}</strong></div>
                                     <div class="pose-hud-row"><span>gate</span><strong>G{{ currentSnapshot?.gate ?? '—' }}</strong></div>
                                 </div>
-                                <div class="pose-hud pose-hud-bl">
-                                    <div class="pose-hud-row"><span>score</span><strong>{{ currentSnapshot?.score ?? '—' }}</strong></div>
-                                    <div class="pose-hud-row"><span>conf</span><strong>{{ currentFaceVis }}</strong></div>
-                                </div>
                                 <div v-if="currentSnapshot?.feedback" class="pose-feedback">{{ currentSnapshot.feedback }}</div>
                             </div>
+                        </div>
 
-                            <!-- 슬라이더: 시점 선택 -->
-                            <v-row no-gutters class="align-item-center | mt-3" style="flex-shrink: 0; gap: 10px;">
+                        <!-- 슬라이더: 시점 선택 -->
+                        <div class="pose-controls px-3 pb-3" style="flex-shrink: 0;">
+                            <v-row no-gutters class="align-item-center |" style="gap: 10px;">
                                 <v-btn
                                     icon
                                     size="small"
@@ -264,11 +159,11 @@
                                 />
                                 <span class="info-text scrub-count">{{ scrubIndex + 1 }} / {{ snapshots.length }}</span>
                             </v-row>
-                        </v-row>
+                        </div>
 
                         <!-- 하단: score 추이 차트 -->
-                        <v-row no-gutters class="flex-column | px-5 | pb-4" style="flex-shrink: 0;">
-                            <v-row no-gutters class="align-item-center | justify-space-between | mb-2">
+                        <div class="chart-section px-5 pb-4" style="flex-shrink: 0;">
+                            <div class="chart-header align-item-center | justify-space-between | mb-2" style="max-height: 60px;">
                                 <v-row no-gutters class="align-item-center">
                                     <v-icon size="15" color="#6A7282" class="mr-1">mdi-chart-line</v-icon>
                                     <span class="info-text">실시간 AI 분석 추이</span>
@@ -284,15 +179,26 @@
                                         @click="toggleMetric(metric.key)"
                                     >{{ metric.label }}</v-btn>
                                 </v-row>
-                            </v-row>
-                            <div class="chart-wrap">
+                            </div>
+                            <div class="chart-wrap chart-fill">
                                 <canvas ref="chartCanvas" />
                             </div>
-                        </v-row>
+                        </div>
                     </v-col>
 
                     <!-- 우측: 메트릭 패널 -->
                     <v-col cols="4" class="d-flex | flex-column | metric-panel" style="overflow-y: auto; scrollbar-width: thin;">
+
+                        <!-- 세션 정보 -->
+                         
+                        <div class="rsec">
+                            <div class="rsh">세션 정보</div>
+                            <div class="drow"><span class="dk">세션 ID</span><span class="dv">{{ session.id || '—' }}</span></div>
+                            <div class="drow"><span class="dk">사용자</span><span class="dv">{{ session.userName || '—' }}</span></div>
+                            <div class="drow"><span class="dk">플랫폼</span><span class="dv">{{ platformLabel }}</span></div>
+                            <div class="drow"><span class="dk">시작 시각</span><span class="dv">{{ session.sDate || '—' }}</span></div>
+                            <div class="drow"><span class="dk">세션 길이</span><span class="dv">{{ sessionDuration }}</span></div>
+                        </div>
 
                         <!-- 현재 시점 AI 결과 -->
                         <div class="rsec">
@@ -331,14 +237,6 @@
                             <div class="rsh">피드백</div>
                             <div class="feedback-box">{{ currentSnapshot?.feedback || '피드백 없음' }}</div>
                             <div v-if="currentSnapshot?.reason" class="reason-box">{{ currentSnapshot.reason }}</div>
-                        </div>
-
-                        <!-- 세션 요약 -->
-                        <div class="rsec">
-                            <div class="rsh">세션 요약</div>
-                            <div class="drow"><span class="dk">총 프레임 수</span><span class="dv">{{ snapshots.length }}</span></div>
-                            <div class="drow"><span class="dk">평균 점수</span><span class="dv">{{ avgScore }}</span></div>
-                            <div class="drow"><span class="dk">통과 비율</span><span class="dv">{{ passedRate }}</span></div>
                         </div>
                     </v-col>
                 </v-row>
@@ -684,15 +582,19 @@ const passedRate = computed(() => {
     return `${((passedCount / snapshots.value.length) * 100).toFixed(1)}%`;
 });
 
+const updatePageCfg = () => {
+    emit('set-page-cfg', {
+        name: `세션 상세 : ${session.value.id || '—'}`,
+        activePath: '/sessions',
+        backPath: '/sessions',
+    });
+};
+
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
     emit('show-right-btn');
     emit('show-left-btn');
-    emit('set-page-cfg', {
-        name: '세션 상세',
-        activePath: '/sessions',
-        backPath: '/sessions',
-    });
+    updatePageCfg();
 
     fetchSessionDetail();
     window.addEventListener('resize', drawSkeleton);
@@ -828,6 +730,7 @@ async function fetchSessionDetail() {
             fetchRefImgDetail(session.value.imgId);
         }
 
+        updatePageCfg();
         await nextTick();
         renderChart();
     } catch (error) {
@@ -1236,6 +1139,18 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 
 <style scoped>
+.ref-img-canvas {
+  background-color: #F3F4F6; /* 대비감을 위해 외부 배경은 옅은 그레이 */
+  width: 100%;
+}
+
+.ref-img-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.4;
+}
+
 .align-item-center {
     align-items: center;
 }
@@ -1310,7 +1225,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     display: inline-block;
     width: 100%;
     line-height: 0;
-    background-color: #ffffff;
+    background-color: transparent;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
@@ -1321,7 +1236,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     object-fit: contain;
     border: 0.7px solid #E5E8EB;
     border-radius: 8px;
-    background-color: #ffffff;
+    background-color: transparent;
 }
 
 .overlay-canvas {
@@ -1334,18 +1249,18 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 
 .ref-panel {
-    background-color: #fafafa;
+    background-color: transparent;
 }
 
 .category-chip {
-    background-color: #FFF4F0;
+    background-color: transparent;
     border: 0.7px solid #FFE0D4;
     color: #FF6129;
     font-size: 10px;
 }
 
 .tag-chip {
-    background-color: #F3F4F6;
+    background-color: transparent;
     color: #4A5565;
     font-size: 10px;
 }
@@ -1353,21 +1268,34 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 .chart-wrap {
     position: relative;
     height: 160px;
-    background-color: #ffffff;
+    background-color: transparent;
     border: 0.7px solid #E5E8EB;
     border-radius: 8px;
     padding: 10px 12px;
 }
 
-/* ── 중앙 라이브 pose 스테이지 ── */
+.central-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.pose-stage-wrapper {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .pose-stage {
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
     display: flex;
     align-items: stretch;
     justify-content: stretch;
-    background-color: #ffffff;
+    background-color: transparent;
     border: 0.7px solid #E5E8EB;
     border-radius: 12px;
     overflow: hidden;
@@ -1377,7 +1305,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     position: relative;
     width: 100%;
     height: 100%;
-    background-color: #ffffff;
+    background-color: transparent;
 }
 
 .live-pose-canvas {
@@ -1473,7 +1401,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 .play-btn--on {
     border-color: #364153 !important;
-    background-color: #F3F4F6 !important;
+    background-color: transparent !important;
     color: #364153 !important;
 }
 
@@ -1490,7 +1418,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 /* ── 우측 메트릭 패널 ── */
 .metric-panel {
-    background-color: #fafafa;
+    background-color: #F3F4F6;
 }
 
 .metric-panel .rsec {
@@ -1543,7 +1471,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 .feedback-box {
     font-size: 12px;
     color: #364153;
-    background-color: #ffffff;
+    background-color: transparent;
     border: 0.7px solid #E5E8EB;
     border-radius: 8px;
     padding: 10px 12px;
