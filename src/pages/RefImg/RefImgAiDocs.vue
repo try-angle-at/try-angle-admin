@@ -83,64 +83,54 @@
 
         <!-- ── 오른쪽: 메트릭 패널 ── -->
         <aside class="info-panel">
-          <div class="panel-section dashboard-summary">
-            <div class="section-label">Overall Review</div>
-            <div class="summary-card">
-              <div class="main-score">
-                <span class="score-num">5.0</span>
-                <span class="score-max">/ 5.0</span>
-              </div>
-              <div class="summary-meta">
+          <div class="panel-section quality-overview-section">
+            <div class="review-score-box">
+              <div class="review-score-header">
+                <div class="section-label">Review Score</div>
                 <div class="focus-badge">{{ props.aiData?.scores?.gfocus || 'FULL REVIEW' }}</div>
-                <div class="aesthetic-row">
-                  <span>Aesthetic Score</span>
-                  <strong class="text-highlight">{{ props.aiData?.scores?.aesthetic || 4 }}.0</strong>
-                </div>
               </div>
+              <div class="radar-score-value">{{ reviewScoreLabel }}</div>
+              <div class="radar-score-caption">AI review score from the model output</div>
             </div>
-          </div>
 
-          <div class="panel-section">
-            <div class="section-label">Global Quality</div>
-            <div class="metrics-grid">
-              <div class="metric-box">
-                <div class="metric-info">
-                  <span class="metric-name">조명 (Lighting)</span>
-                  <span class="metric-val">{{ props.aiData?.scores?.global?.lighting || 5 }}</span>
-                </div>
-                <div class="metric-bar-track">
-                  <div class="metric-bar-fill" :style="{ width: ((props.aiData?.scores?.global?.lighting || 5) / 5 * 100) + '%' }"></div>
-                </div>
-              </div>
-
-              <div class="metric-box">
-                <div class="metric-info">
-                  <span class="metric-name">선명도 (Sharpness)</span>
-                  <span class="metric-val">{{ props.aiData?.scores?.global?.sharpness || 5 }}</span>
-                </div>
-                <div class="metric-bar-track">
-                  <div class="metric-bar-fill" :style="{ width: ((props.aiData?.scores?.global?.sharpness || 5) / 5 * 100) + '%' }"></div>
-                </div>
-              </div>
-
-              <div class="metric-box">
-                <div class="metric-info">
-                  <span class="metric-name">구도 (Composition)</span>
-                  <span class="metric-val text-four">{{ props.aiData?.scores?.global?.composition || 4 }}</span>
-                </div>
-                <div class="metric-bar-track">
-                  <div class="metric-bar-fill fill-four" :style="{ width: ((props.aiData?.scores?.global?.composition || 4) / 5 * 100) + '%' }"></div>
-                </div>
-              </div>
-
-              <div class="metric-box">
-                <div class="metric-info">
-                  <span class="metric-name">배경 깔끔도 (Background)</span>
-                  <span class="metric-val text-four">{{ props.aiData?.scores?.global?.background_cleanliness || 4 }}</span>
-                </div>
-                <div class="metric-bar-track">
-                  <div class="metric-bar-fill fill-four" :style="{ width: ((props.aiData?.scores?.global?.background_cleanliness || 4) / 5 * 100) + '%' }"></div>
-                </div>
+            <div class="section-label">Quality Overview</div>
+            <div class="radar-chart-card">
+              <div class="radar-chart-frame">
+                <svg viewBox="-132 -132 264 264" class="radar-chart-svg" aria-label="Quality radar chart">
+                  <g class="radar-grid">
+                    <circle v-for="level in [1,2,3,4,5]" :key="level" :r="level * 16" class="radar-grid-ring" />
+                  </g>
+                  <g class="radar-axes">
+                    <line
+                      v-for="item in radarAxes"
+                      :key="item.label"
+                      x1="0" y1="0"
+                      :x2="item.axisX"
+                      :y2="item.axisY"
+                      class="radar-axis-line"
+                    />
+                    <text
+                      v-for="item in radarAxes"
+                      :key="item.label + '-label'"
+                      :x="item.labelX"
+                      :y="item.labelY"
+                      :text-anchor="item.labelAnchor"
+                      :dy="item.labelDy"
+                      class="radar-axis-label"
+                    >{{ item.label }}</text>
+                  </g>
+                  <polygon :points="radarPolygonPoints" class="radar-polygon" />
+                  <g class="radar-points">
+                    <circle
+                      v-for="item in radarAxes"
+                      :key="item.label + '-point'"
+                      :cx="item.x"
+                      :cy="item.y"
+                      r="3.8"
+                      class="radar-point"
+                    />
+                  </g>
+                </svg>
               </div>
             </div>
           </div>
@@ -185,6 +175,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 // ─────────── Props / Emits ───────────
 const props = defineProps({
   aiDocs:    { type: String, default: '' },
+  aiData:    { type: Object, default: () => ({}) },
   title:     { type: String, default: '' },
   imagePath: { type: String, default: '' },
 });
@@ -248,6 +239,43 @@ const GRP_CSS = { body: '#00B7FF', foot: '#34D399', face: '#A78BFA', hand: '#FB9
 
 const grpOf = i => (i <= 16 ? 'body' : i <= 22 ? 'foot' : i <= 90 ? 'face' : 'hand');
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const scoreValue = (value, fallback = 4) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? clamp(n, 0, 5) : fallback;
+};
+
+const radarMetrics = computed(() => [
+  { label: 'Lighting', value: scoreValue(props.aiData?.scores?.global?.lighting, 5) },
+  { label: 'Sharpness', value: scoreValue(props.aiData?.scores?.global?.sharpness, 5) },
+  { label: 'Composition', value: scoreValue(props.aiData?.scores?.global?.composition, 4) },
+  { label: 'Background', value: scoreValue(props.aiData?.scores?.global?.background_cleanliness, 4) },
+  { label: 'Aesthetic', value: scoreValue(props.aiData?.scores?.aesthetic, 4) },
+]);
+
+const reviewScore = computed(() => scoreValue(props.aiData?.scores?.review, 5));
+const reviewScoreLabel = computed(() => reviewScore.value.toFixed(1));
+
+const radarAxes = computed(() => {
+  const baseRadius = 88;
+  const labelRadius = baseRadius + 22;
+  return radarMetrics.value.map((item, index) => {
+    const angle = Math.PI * 2 * index / radarMetrics.value.length - Math.PI / 2;
+    const radius = (item.value / 5) * baseRadius;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const axisX = Math.cos(angle) * baseRadius;
+    const axisY = Math.sin(angle) * baseRadius;
+    const labelX = Math.cos(angle) * labelRadius;
+    const labelY = Math.sin(angle) * labelRadius;
+    const labelAnchor = labelX < -6 ? 'end' : labelX > 6 ? 'start' : 'middle';
+    const labelDy = labelY > 10 ? '0.9em' : labelY < -10 ? '-0.25em' : '0.35em';
+    return { ...item, angle, x, y, axisX, axisY, labelX, labelY, labelAnchor, labelDy };
+  });
+});
+
+const radarPolygonPoints = computed(() =>
+  radarAxes.value.map(item => `${item.x.toFixed(2)},${item.y.toFixed(2)}`).join(' ')
+);
 
 // ─────────── aiDocs 파싱 ───────────
 const decodeHex = h => { const v = parseInt(h, 16); return isFinite(v) ? v / 10000 : 0; };
@@ -969,6 +997,7 @@ watch(
 .subject-line strong { color: #1F2937; font-weight: 600; }
 
 /* ─── 오른쪽 패널 ─── */
+.info-panel,
 .right-panel {
   background: #ffffff;
   border-left: 1px solid #E5E7EB;
@@ -978,6 +1007,110 @@ watch(
 .panel-section {
   padding: 14px;
   border-bottom: 1px solid #E5E7EB;
+}
+
+.quality-overview-section {
+  display: grid;
+  gap: 20px;
+  padding-bottom: 22px;
+}
+
+.review-score-box {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.review-score-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.radar-score-caption {
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+.radar-chart-card {
+  display: grid;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.radar-chart-frame {
+  width: 100%;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar-chart-svg {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+}
+
+.radar-grid-ring {
+  fill: none;
+  stroke: #E5E7EB;
+  stroke-width: 1;
+}
+
+.radar-axis-line {
+  stroke: #D1D5DB;
+  stroke-width: 1;
+}
+
+.radar-axis-label {
+  font-size: 10px;
+  fill: #374151;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.radar-polygon {
+  fill: rgba(59, 130, 246, 0.15);
+  stroke: #2563EB;
+  stroke-width: 2;
+}
+
+.radar-point {
+  fill: #2563EB;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.radar-chart-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.radar-score-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.radar-score-caption {
+  font-size: 12px;
+  color: #4B5563;
+  line-height: 1.4;
+}
+
+.radar-chart-summary .focus-badge {
+  margin-top: 6px;
 }
 
 .panel-section--json {
