@@ -878,7 +878,45 @@ function handleImageLoad() {
     drawSkeleton();
 }
 
-// ----- 라이브 pose 캔버스 (중앙) 그리기: snapshots[scrubIndex].kpHex/bboxHex 기반 ----- //
+// 모바일 화면 크기 배경 그리기
+function drawMobileScreenBg(ctx, W, H) {
+    // 모바일 기본 비율 (9:16 - 세로 모드)
+    const mobileAspectRatio = 9 / 16;
+    
+    // 캔버스에 맞게 모바일 크기 계산
+    let mobileW, mobileH;
+    const canvasAspectRatio = W / H;
+    
+    if (canvasAspectRatio > mobileAspectRatio) {
+        // 캔버스가 가로로 넓으면 높이 기준으로 계산
+        mobileH = H * 0.95;
+        mobileW = mobileH * mobileAspectRatio;
+    } else {
+        // 캔버스가 세로로 길면 너비 기준으로 계산
+        mobileW = W * 0.95;
+        mobileH = mobileW / mobileAspectRatio;
+    }
+    
+    // 캔버스 중앙에 정렬
+    const offsetX = (W - mobileW) / 2;
+    const offsetY = (H - mobileH) / 2;
+    
+    // 모바일 화면 영역 - 반투명 배경
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#9CA3AF';
+    ctx.fillRect(offsetX, offsetY, mobileW, mobileH);
+    ctx.restore();
+    
+    // 모바일 화면 영역 - 테두리
+    ctx.save();
+    ctx.strokeStyle = 'rgba(156, 163, 175, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(offsetX, offsetY, mobileW, mobileH);
+    ctx.restore();
+}
+
 function drawLiveSkeleton() {
     const canvas = liveCanvasRef.value;
     if (!canvas) return;
@@ -901,6 +939,10 @@ function drawLiveSkeleton() {
     ctx.clearRect(0, 0, W, H);
 
     const pose = livePoseOverlay.value;
+    
+    // 모바일 화면 배경 그리기
+    drawMobileScreenBg(ctx, W, H);
+    
     if (!pose?.points?.length) return;
 
     const pts = pose.points;
