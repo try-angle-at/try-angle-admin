@@ -98,11 +98,24 @@
                         <div class="pose-stage-wrapper px-3 pb-3" style="min-height: 0;">
                             <div class="pose-stage">
                                 <div class="pose-stage-inner">
-                                    <canvas ref="liveCanvasRef" class="live-pose-canvas" />
-                                    <div v-if="!currentSnapshotHasPose" class="pose-empty-overlay">
+                                    <!-- Three.js 마운트 포인트 (항상 DOM에 존재, 탭으로 가려짐) -->
+                                    <div ref="threeContainerRef" class="three-stage" v-show="liveTab === '3D'" />
+
+                                    <canvas v-show="liveTab === '2D'" ref="liveCanvasRef" class="live-pose-canvas" />
+                                    <div v-if="liveTab === '2D' && !currentSnapshotHasPose" class="pose-empty-overlay">
                                         <v-icon size="28" color="#9AA3AF">mdi-account-question-outline</v-icon>
                                         <span class="info-text mt-1">키포인트 없음</span>
                                     </div>
+                                </div>
+
+                                <!-- 탭 전환 버튼 (2D / 3D) -->
+                                <div class="tab-bar">
+                                    <button
+                                        v-for="tab in ['3D', '2D']"
+                                        :key="tab"
+                                        :class="['tab-btn', { active: liveTab === tab }]"
+                                        @click="switchLiveTab(tab)"
+                                    >{{ tab }}</button>
                                 </div>
 
                                 <!-- HUD: 현재 프레임 카메라 정보 -->
@@ -294,6 +307,8 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router';
 import Util from '@/common/Util.js';
 import * as HttpHandler from '@/common/HttpHandler.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const props = defineProps({
     sessionId: {
@@ -383,8 +398,23 @@ const L_HAND = HAND.map(([a, b]) => [91 + a,  91 + b]);
 const R_HAND = HAND.map(([a, b]) => [112 + a, 112 + b]);
 
 const GRP_CSS = { body: '#00B7FF', foot: '#34D399', face: '#A78BFA', hand: '#FB923C' };
+const GRP_HEX = { body: 0x00b7ff, foot: 0x34d399, face: 0xa78bfa, hand: 0xfb923c };
 const grpOf   = i => (i <= 16 ? 'body' : i <= 22 ? 'foot' : i <= 90 ? 'face' : 'hand');
 const clamp   = (v, a, b) => Math.min(b, Math.max(a, v));
+
+// ----- 라이브 pose 3D 패널 관련 ----- //
+const liveTab           = ref('2D'); // '2D' | '3D'
+const threeContainerRef = ref(null);
+
+let renderer3d   = null;
+let threeScene   = null;
+let threeCamera  = null;
+let controls3d   = null;
+let animId3d     = null;
+let skelGroup3d  = null;
+let camMarker3d  = null;
+let resizeObs3d  = null;
+let threeReady   = false;
 
 const skeletonGroups = [
     { key: 'body', label: 'Body',  color: GRP_CSS.body },
@@ -599,6 +629,7 @@ onMounted(() => {
     fetchSessionDetail();
     window.addEventListener('resize', drawSkeleton);
     window.addEventListener('resize', drawLiveSkeleton);
+    window.addEventListener('resize', handleThreeResize);
 });
 
 onBeforeUnmount(() => {
@@ -606,8 +637,10 @@ onBeforeUnmount(() => {
         chartInstance.destroy();
     }
     stopPlay();
+    disposeThree3d();
     window.removeEventListener('resize', drawSkeleton);
     window.removeEventListener('resize', drawLiveSkeleton);
+    window.removeEventListener('resize', handleThreeResize);
 });
 
 watch(activeMetrics, () => {
@@ -621,9 +654,13 @@ watch(
     },
 );
 
-// 슬라이드로 시점이 바뀔 때마다 라이브 pose 캔버스 다시 그리기
+// 슬라이드로 시점이 바뀔 때마다 라이브 pose 캔버스(2D) 또는 3D 씬 다시 그리기
 watch(scrubIndex, () => {
-    nextTick(drawLiveSkeleton);
+    if (liveTab.value === '3D') {
+        nextTick(buildThreeScene3d);
+    } else {
+        nextTick(drawLiveSkeleton);
+    }
     syncChartNeedle();
 });
 
@@ -631,7 +668,13 @@ watch(scrubIndex, () => {
 watch(snapshots, (list) => {
     stopPlay();
     scrubIndex.value = list.length ? list.length - 1 : 0;
-    nextTick(drawLiveSkeleton);
+    nextTick(() => {
+        if (liveTab.value === '3D') {
+            buildThreeScene3d();
+        } else {
+            drawLiveSkeleton();
+        }
+    });
 });
 
 // ----- 함수 정의 ----- //
@@ -997,7 +1040,337 @@ function drawLiveSkeleton() {
     ctx.restore();
 }
 
-// 차트 위에 현재 슬라이더 위치(scrubIndex)를 세로선으로 표시하는 커스텀 플러그인
+function switchLiveTab(tab) {
+    liveTab.value = tab;
+    if (tab === '2D') {
+        nextTick(drawLiveSkeleton);
+    } else {
+        nextTick(() => {
+            if (!threeReady) {
+                initThree3d();
+            } else {
+                // 컨테이너가 v-show로 가려져 있다가 다시 보일 때 사이즈 갱신
+                handleThreeResize();
+            }
+            buildThreeScene3d();
+        });
+    }
+}
+
+// ----- Three.js 초기화 (RefImgAiDocs 동일 로직 — 라이브 snapshot 기준) ----- //
+function initThree3d() {
+    const container = threeContainerRef.value;
+    if (!container) return;
+
+    const W = container.clientWidth  || 600;
+    const H = container.clientHeight || 600;
+
+    renderer3d = new THREE.WebGLRenderer({ antialias: true });
+    renderer3d.setPixelRatio(window.devicePixelRatio || 1);
+    renderer3d.setSize(W, H);
+    renderer3d.setClearColor(0xffffff, 1);
+    container.appendChild(renderer3d.domElement);
+
+    threeScene = new THREE.Scene();
+    threeScene.background = new THREE.Color(0xffffff);
+
+    threeScene.add(new THREE.HemisphereLight(0xffffff, 0xdddddd, 1.3));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.4);
+    dl.position.set(3, 5, 4);
+    threeScene.add(dl);
+    const dl2 = new THREE.DirectionalLight(0xc8d8ff, 0.45);
+    dl2.position.set(-4, 2, 2);
+    threeScene.add(dl2);
+
+    threeScene.add(new THREE.GridHelper(10, 20, 0xd1d5db, 0xe5e7eb));
+
+    threeCamera = new THREE.PerspectiveCamera(45, W / H, 0.05, 100);
+    threeCamera.position.set(2.8, -1, 5.3);
+
+    controls3d = new OrbitControls(threeCamera, renderer3d.domElement);
+    controls3d.enableDamping = true;
+    controls3d.dampingFactor = 0.07;
+    controls3d.target.set(0, 0.85, 0);
+    controls3d.update();
+
+    threeReady = true;
+
+    const animate = () => {
+        animId3d = requestAnimationFrame(animate);
+        controls3d.update();
+        renderer3d.render(threeScene, threeCamera);
+    };
+    animate();
+
+    resizeObs3d = new ResizeObserver(() => handleThreeResize());
+    resizeObs3d.observe(container);
+}
+
+function handleThreeResize() {
+    if (!threeContainerRef.value || !renderer3d || !threeCamera) return;
+    const nW = threeContainerRef.value.clientWidth;
+    const nH = threeContainerRef.value.clientHeight;
+    if (!nW || !nH) return;
+    threeCamera.aspect = nW / nH;
+    threeCamera.updateProjectionMatrix();
+    renderer3d.setSize(nW, nH);
+}
+
+// 현재 선택된(scrub) 시점의 snapshot 기준으로 3D 씬 구성
+function buildThreeScene3d() {
+    if (!threeReady || !threeScene) return;
+
+    // 기존 오브젝트 정리
+    if (camMarker3d?.userData?.shadowGroup) {
+        const sg = camMarker3d.userData.shadowGroup;
+        threeScene.remove(sg);
+        sg.traverse(o => {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); }
+        });
+    }
+    [skelGroup3d, camMarker3d].forEach(obj => {
+        if (!obj) return;
+        threeScene.remove(obj);
+        obj.traverse(o => {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) {
+                if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+                else o.material.dispose();
+            }
+        });
+    });
+    skelGroup3d = null;
+    camMarker3d = null;
+
+    skelGroup3d = new THREE.Group();
+
+    const snap = currentSnapshot.value;
+    const pose = livePoseOverlay.value;
+
+    if (pose?.points?.length) {
+        const pitchDeg  = Number(snap?.pitchDeg ?? 0);
+        const distM     = Number(snap?.torsoDistM ?? 2.5);
+        const focalMm35 = Number(snap?.focalMm35eq ?? 50);
+        const imgW      = Number(snap?.size?.w ?? 720);
+        const imgH      = Number(snap?.size?.h ?? 960);
+        const aspect    = imgW / imgH;
+
+        const fovVRad = 2 * Math.atan(18 / Math.max(focalMm35, 10));
+        const d       = isFinite(distM) && distM > 0.1 ? distM : 2.5;
+        const sceneH  = 2 * d * Math.tan(fovVRad / 2);
+        const sceneW  = sceneH * aspect;
+
+        const pitchRad     = pitchDeg * Math.PI / 180;
+        const centerYShift = d * Math.tan(pitchRad);
+
+        const pts = pose.points;
+
+        const kp3d = pts.map(p => ({
+            wx:   (p.x - 0.5) * sceneW,
+            wy:   -(p.y - 0.5) * sceneH + centerYShift,
+            conf: p.conf,
+        }));
+
+        const drawConns = (conns, grp) => {
+            conns.forEach(([si, ei]) => {
+                const s = kp3d[si], e = kp3d[ei];
+                if (!s || !e) return;
+                const alpha = Math.min(s.conf ?? 0, e.conf ?? 0);
+                if (alpha < 0.05) return;
+                const geo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(s.wx, s.wy, 0),
+                    new THREE.Vector3(e.wx, e.wy, 0),
+                ]);
+                const mat = new THREE.LineBasicMaterial({
+                    color: GRP_HEX[grp] ?? 0x00b7ff,
+                    transparent: true,
+                    opacity: clamp(alpha, 0.25, 1.0),
+                });
+                skelGroup3d.add(new THREE.Line(geo, mat));
+            });
+        };
+
+        drawConns(COCO17, 'body');
+        drawConns(FOOT,   'foot');
+        drawConns(FACE,   'face');
+        drawConns(L_HAND, 'hand');
+        drawConns(R_HAND, 'hand');
+
+        pts.forEach((p, i) => {
+            if ((p.conf ?? 0) < 0.08) return;
+            const g = grpOf(i);
+            const r = g === 'body' ? 0.020 : g === 'foot' ? 0.015 : 0.008;
+            const mat = new THREE.MeshStandardMaterial({
+                color:             GRP_HEX[g],
+                emissive:          GRP_HEX[g],
+                emissiveIntensity: 0.2,
+                roughness:         0.4,
+            });
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat);
+            mesh.position.set(kp3d[i].wx, kp3d[i].wy, 0);
+            skelGroup3d.add(mesh);
+        });
+
+        if (pose.bbox) {
+            const bb  = pose.bbox;
+            const bx1 = (bb.x        - 0.5) * sceneW;
+            const bx2 = (bb.x + bb.w - 0.5) * sceneW;
+            const by1 = -(bb.y        - 0.5) * sceneH + centerYShift;
+            const by2 = -(bb.y + bb.h - 0.5) * sceneH + centerYShift;
+            const geo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(bx1, by1, 0),
+                new THREE.Vector3(bx2, by1, 0),
+                new THREE.Vector3(bx2, by2, 0),
+                new THREE.Vector3(bx1, by2, 0),
+                new THREE.Vector3(bx1, by1, 0),
+            ]);
+            const bmat = new THREE.LineDashedMaterial({ color: 0x10b981, dashSize: 0.04, gapSize: 0.03, opacity: 0.7, transparent: true });
+            const bl   = new THREE.Line(geo, bmat);
+            bl.computeLineDistances();
+            skelGroup3d.add(bl);
+        }
+
+        const validYs = kp3d.filter(k => k.conf > 0.05).map(k => k.wy);
+        if (validYs.length) {
+            skelGroup3d.position.y = -Math.min(...validYs);
+        }
+    } else {
+        const mat  = new THREE.MeshStandardMaterial({ color: 0xd1d5db, wireframe: true });
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12), mat);
+        mesh.position.set(0, 0.85, 0);
+        skelGroup3d.add(mesh);
+    }
+
+    threeScene.add(skelGroup3d);
+
+    // ── 카메라 리그 ──
+    const pitchDeg  = Number(snap?.pitchDeg ?? 0);
+    const rollDeg   = Number(snap?.rollDeg ?? 0);
+    const focalMm35 = Number(snap?.focalMm35eq ?? 50);
+    const distM     = Number(snap?.torsoDistM ?? 2.5);
+    const imgW      = Number(snap?.size?.w ?? 720);
+    const imgH      = Number(snap?.size?.h ?? 960);
+    const imgAspect = imgW / imgH;
+
+    const pitchRad = pitchDeg * Math.PI / 180;
+    const rollRad  = rollDeg  * Math.PI / 180;
+    const subjMidY = 0.85;
+    const camZ     = clamp(distM, 1.0, 6.0);
+    const camY     = clamp(subjMidY - camZ * Math.tan(pitchRad), 0.3, 3.5);
+
+    const fovVDeg = (2 * Math.atan(18 / Math.max(focalMm35, 10))) * 180 / Math.PI;
+    const fovVRad = fovVDeg * Math.PI / 180;
+
+    camMarker3d = new THREE.Group();
+
+    const bodyGeo  = new THREE.BoxGeometry(0.18, 0.12, 0.09);
+    const bodyMat  = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.5, metalness: 0.4 });
+    const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+    camMarker3d.add(bodyMesh);
+
+    const lensBodyGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.06, 20);
+    const lensBodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.6 });
+    const lensBody    = new THREE.Mesh(lensBodyGeo, lensBodyMat);
+    lensBody.rotation.x = Math.PI / 2;
+    lensBody.position.set(0, 0, -0.075);
+    camMarker3d.add(lensBody);
+
+    const ringGeo = new THREE.TorusGeometry(0.042, 0.006, 10, 32);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 0.6 });
+    const ring    = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(0, 0, -0.105);
+    camMarker3d.add(ring);
+
+    const shoeGeo = new THREE.BoxGeometry(0.08, 0.02, 0.03);
+    const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7 });
+    const shoe    = new THREE.Mesh(shoeGeo, shoeMat);
+    shoe.position.set(0, 0.07, 0);
+    camMarker3d.add(shoe);
+
+    const fLen  = clamp(camZ * 0.85, 0.8, 3.5);
+    const halfH = fLen * Math.tan(fovVRad / 2);
+    const halfW = halfH * imgAspect;
+
+    const ftl = new THREE.Vector3(-halfW,  halfH, -fLen);
+    const ftr = new THREE.Vector3( halfW,  halfH, -fLen);
+    const fbl = new THREE.Vector3(-halfW, -halfH, -fLen);
+    const fbr = new THREE.Vector3( halfW, -halfH, -fLen);
+    const org = new THREE.Vector3(0, 0, 0);
+
+    const frustumPts = [
+        org.clone(), ftl.clone(),
+        org.clone(), ftr.clone(),
+        org.clone(), fbl.clone(),
+        org.clone(), fbr.clone(),
+        ftl.clone(), ftr.clone(),
+        ftr.clone(), fbr.clone(),
+        fbr.clone(), fbl.clone(),
+        fbl.clone(), ftl.clone(),
+    ];
+    const frustumGeo = new THREE.BufferGeometry().setFromPoints(frustumPts);
+    const frustumMat = new THREE.LineBasicMaterial({ color: 0xff6b6b, opacity: 0.55, transparent: true });
+    camMarker3d.add(new THREE.LineSegments(frustumGeo, frustumMat));
+
+    const axisGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -camZ * 0.95),
+    ]);
+    const axisMat  = new THREE.LineDashedMaterial({ color: 0xff9900, dashSize: 0.08, gapSize: 0.05, opacity: 0.7, transparent: true });
+    const axisLine = new THREE.Line(axisGeo, axisMat);
+    axisLine.computeLineDistances();
+    camMarker3d.add(axisLine);
+
+    camMarker3d.position.set(0, camY, camZ);
+
+    const lookPitch = -Math.atan2(camY - subjMidY, camZ);
+    camMarker3d.rotation.order = 'YXZ';
+    camMarker3d.rotation.y = 0;
+    camMarker3d.rotation.x = lookPitch;
+    camMarker3d.rotation.z = rollRad;
+
+    threeScene.add(camMarker3d);
+
+    const shadowGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, -camY + 0.002, 0),
+    ]);
+    const shadowMat  = new THREE.LineDashedMaterial({ color: 0xaaaaaa, dashSize: 0.05, gapSize: 0.04, opacity: 0.5, transparent: true });
+    const shadowLine = new THREE.Line(shadowGeo, shadowMat);
+    shadowLine.computeLineDistances();
+    const shadowGroup = new THREE.Group();
+    shadowGroup.position.copy(camMarker3d.position);
+    shadowGroup.add(shadowLine);
+
+    const circleGeo = new THREE.RingGeometry(0.09, 0.12, 32);
+    const circleMat = new THREE.MeshBasicMaterial({ color: 0xff6b6b, opacity: 0.35, transparent: true, side: THREE.DoubleSide });
+    const circle    = new THREE.Mesh(circleGeo, circleMat);
+    circle.rotation.x = -Math.PI / 2;
+    circle.position.set(0, -camY + 0.002, 0);
+    shadowGroup.add(circle);
+
+    camMarker3d.userData.shadowGroup = shadowGroup;
+    threeScene.add(shadowGroup);
+}
+
+function disposeThree3d() {
+    if (animId3d) cancelAnimationFrame(animId3d);
+    if (resizeObs3d) resizeObs3d.disconnect();
+    if (controls3d) controls3d.dispose();
+    if (renderer3d) renderer3d.dispose();
+    animId3d = null;
+    resizeObs3d = null;
+    controls3d = null;
+    renderer3d = null;
+    threeScene = null;
+    threeCamera = null;
+    skelGroup3d = null;
+    camMarker3d = null;
+    threeReady = false;
+}
+
+
 const chartNeedlePlugin = {
     id: 'scrubNeedle',
     afterDraw(chart) {
@@ -1048,19 +1421,18 @@ async function renderChart() {
         return s[key] ?? null;
     };
 
-    const datasets = availableMetrics
-        .filter((m) => activeMetrics.value.includes(m.key))
-        .map((m) => ({
-            label:            m.label,
-            data:             snapshots.value.map((s) => valueOf(s, m.key)),
-            borderColor:      colorMap[m.key],
-            backgroundColor:  colorMap[m.key] + '22',
-            fill:             true,
-            tension:          0.35,
-            pointRadius:      0,
-            pointHoverRadius: 5,
-            borderWidth:      1.6,
-        }));
+    // 항상 score 와 progress를 모두 노출합니다 (토글 버튼은 UI에 남기되, 차트 데이터는 항상 포함)
+    const datasets = availableMetrics.map((m) => ({
+        label:            m.label,
+        data:             snapshots.value.map((s) => valueOf(s, m.key)),
+        borderColor:      colorMap[m.key],
+        backgroundColor:  colorMap[m.key] + '22',
+        fill:             true,
+        tension:          0.35,
+        pointRadius:      0,
+        pointHoverRadius: 5,
+        borderWidth:      1.6,
+    }));
 
     chartInstance = new Chart(chartCanvas.value, {
         type: 'line',
@@ -1349,6 +1721,45 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     height: 100%;
     background-color: transparent;
 }
+
+/* Three.js 마운트 div — pose-stage-inner 풀사이즈 */
+.three-stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.three-stage :deep(canvas) {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 2D / 3D 탭 */
+.tab-bar {
+    position: absolute;
+    bottom: 10px; right: 10px;
+    display: flex; gap: 4px;
+    z-index: 10;
+    background: rgba(10, 10, 14, 0.72);
+    backdrop-filter: blur(6px);
+    border: 0.7px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.tab-btn {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px;
+    border: none; border-radius: 6px;
+    background: transparent; color: #9AA3AF;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    line-height: 1.4;
+}
+.tab-btn.active  { background: #ffffff; color: #111827; }
+.tab-btn:hover:not(.active) { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
 
 .live-pose-canvas {
     display: block;
