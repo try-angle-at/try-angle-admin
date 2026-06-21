@@ -1310,6 +1310,9 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     display: inline-block;
     width: 100%;
     line-height: 0;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .canvas-image-native {
@@ -1326,6 +1329,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     inset: 0;
     pointer-events: none;
     border-radius: 8px;
+    background-color: transparent;
 }
 
 
@@ -1363,7 +1367,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     display: flex;
     align-items: stretch;
     justify-content: stretch;
-    background-color: #0b0b0f;
+    background-color: #ffffff;
     border: 0.7px solid #E5E8EB;
     border-radius: 12px;
     overflow: hidden;
@@ -1373,6 +1377,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     position: relative;
     width: 100%;
     height: 100%;
+    background-color: #ffffff;
 }
 
 .live-pose-canvas {
