@@ -90,7 +90,7 @@
                 </v-row>
             </v-col>
 
-            <!-- 우측 메인 영역 -->
+            <!-- 중앙 + 우측 메인 영역 -->
             <v-col cols="9" class="d-flex | flex-column" style="overflow: hidden;">
 
                 <!-- 상단 헤더 -->
@@ -175,71 +175,172 @@
                     </v-col>
                 </v-row>
 
-                <!-- 그래프 영역 -->
-                <v-row no-gutters class="flex-column | flex-grow-1 | px-6 | pt-4 | pb-2" style="overflow-y: auto; min-height: 0;">
+                <!-- 로딩 -->
+                <v-row v-if="isSessionLoading" no-gutters class="align-center | justify-center | flex-grow-1">
+                    <v-progress-circular indeterminate color="#6A7282" />
+                </v-row>
 
-                    <v-row no-gutters class="align-item-center | justify-space-between | mb-3">
-                        <v-row no-gutters class="align-item-center">
-                            <v-icon size="15" color="#6A7282" class="mr-1">mdi-chart-line</v-icon>
-                            <span class="info-text">실시간 AI 분석 추이</span>
-                        </v-row>
-                        <v-row no-gutters cols="auto" style="gap: 6px;">
-                            <v-btn
-                                v-for="metric in availableMetrics"
-                                :key="metric.key"
-                                size="x-small"
-                                :variant="activeMetrics.includes(metric.key) ? 'outlined' : 'text'"
-                                class="small-btn"
-                                :class="activeMetrics.includes(metric.key) ? 'outline-grey' : ''"
-                                @click="toggleMetric(metric.key)"
-                            >{{ metric.label }}</v-btn>
-                        </v-row>
-                    </v-row>
+                <!-- 스냅샷 없음 -->
+                <v-row v-else-if="!snapshots.length" no-gutters class="flex-column | align-center | justify-center | flex-grow-1">
+                    <v-icon size="40" color="#4A5565">mdi-chart-line-variant</v-icon>
+                    <span class="info-text mt-2">스냅샷 데이터가 없습니다</span>
+                </v-row>
 
-                    <!-- 로딩 -->
-                    <v-row v-if="isSessionLoading" no-gutters class="align-center | justify-center" style="height: 300px;">
-                        <v-progress-circular indeterminate color="#6A7282" />
-                    </v-row>
+                <!-- 본문: 중앙(라이브 pose 캔버스 + 차트) / 우측(메트릭 패널) -->
+                <v-row v-else no-gutters class="flex-grow-1" style="min-height: 0; overflow: hidden;">
 
-                    <!-- 스냅샷 없음 -->
-                    <v-row v-else-if="!snapshots.length" no-gutters class="flex-column | align-center | justify-center" style="height: 300px;">
-                        <v-icon size="40" color="#4A5565">mdi-chart-line-variant</v-icon>
-                        <span class="info-text mt-2">스냅샷 데이터가 없습니다</span>
-                    </v-row>
+                    <!-- 중앙: 실시간 pose 캔버스 + 타임라인 차트 -->
+                    <v-col cols="8" class="d-flex | flex-column" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
 
-                    <!-- 차트 -->
-                    <v-row v-else no-gutters class="chart-wrap">
-                        <canvas ref="chartCanvas" style="width: 100%; height: 100%;" />
-                    </v-row>
-
-                    <!-- 스냅샷 테이블 -->
-                    <v-row v-if="snapshots.length" no-gutters class="flex-column | mt-4">
-                        <v-row no-gutters class="align-item-center | mb-2">
-                            <v-icon size="13" color="#6A7282" class="mr-1">mdi-table</v-icon>
-                            <span class="info-text">스냅샷 목록 ({{ snapshots.length }}개)</span>
-                        </v-row>
-                        <v-data-table
-                            :headers="snapshotHeaders"
-                            :items="snapshotTableItems"
-                            density="compact"
-                            :items-per-page="5"
-                            class="snapshot-tbl"
-                            hide-default-footer
-                        >
-                            <template #item.score="{ item }">
-                                <v-row no-gutters class="align-item-center" style="gap: 6px;">
-                                    <div
-                                        class="score-bar"
-                                        :style="{ width: (item.score ?? 0) + '%', background: scoreColor(item.score) }"
-                                    />
-                                    <span class="info-text">{{ item.score ?? '—' }}</span>
+                        <!-- pose 캔버스 영역 -->
+                        <v-row no-gutters class="flex-column | flex-grow-1 | px-5 | pt-4 | pb-3" style="min-height: 0;">
+                            <v-row no-gutters class="align-item-center | justify-space-between | mb-2" style="flex-shrink: 0;">
+                                <v-row no-gutters class="align-item-center">
+                                    <v-icon size="15" color="#6A7282" class="mr-1">mdi-human</v-icon>
+                                    <span class="info-text">실시간 Pose 캡처</span>
                                 </v-row>
-                            </template>
-                            <template #item.ts="{ item }">
-                                <span class="info-text" style="font-family: monospace;">{{ item.ts }}</span>
-                            </template>
-                        </v-data-table>
-                    </v-row>
+                                <v-row no-gutters class="align-item-center" style="gap: 4px; flex-wrap: wrap;">
+                                    <v-chip
+                                        v-for="grp in skeletonGroups"
+                                        :key="grp.key"
+                                        size="x-small"
+                                        variant="outlined"
+                                        :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
+                                    >{{ grp.label }}</v-chip>
+                                </v-row>
+                            </v-row>
+
+                            <div class="pose-stage">
+                                <div class="pose-stage-inner">
+                                    <canvas ref="liveCanvasRef" class="live-pose-canvas" />
+                                    <div v-if="!currentSnapshotHasPose" class="pose-empty-overlay">
+                                        <v-icon size="28" color="#9AA3AF">mdi-account-question-outline</v-icon>
+                                        <span class="info-text mt-1">키포인트 없음</span>
+                                    </div>
+                                </div>
+
+                                <!-- HUD: 현재 프레임 카메라 정보 -->
+                                <div class="pose-hud pose-hud-tl">
+                                    <div class="pose-hud-label">FRAME</div>
+                                    <div class="pose-hud-main">#{{ currentSnapshot?.fseq ?? '—' }}</div>
+                                    <div class="pose-hud-sub">{{ currentFrameTime }}</div>
+                                </div>
+                                <div class="pose-hud pose-hud-tr">
+                                    <div class="pose-hud-row"><span>phase</span><strong>{{ currentSnapshot?.category || '—' }}</strong></div>
+                                    <div class="pose-hud-row"><span>gate</span><strong>G{{ currentSnapshot?.gate ?? '—' }}</strong></div>
+                                </div>
+                                <div class="pose-hud pose-hud-bl">
+                                    <div class="pose-hud-row"><span>score</span><strong>{{ currentSnapshot?.score ?? '—' }}</strong></div>
+                                    <div class="pose-hud-row"><span>conf</span><strong>{{ currentFaceVis }}</strong></div>
+                                </div>
+                                <div v-if="currentSnapshot?.feedback" class="pose-feedback">{{ currentSnapshot.feedback }}</div>
+                            </div>
+
+                            <!-- 슬라이더: 시점 선택 -->
+                            <v-row no-gutters class="align-item-center | mt-3" style="flex-shrink: 0; gap: 10px;">
+                                <v-btn
+                                    icon
+                                    size="small"
+                                    variant="outlined"
+                                    class="play-btn"
+                                    :class="{ 'play-btn--on': isPlaying }"
+                                    @click="togglePlay"
+                                >
+                                    <v-icon size="16">{{ isPlaying ? 'mdi-pause' : 'mdi-play' }}</v-icon>
+                                </v-btn>
+                                <v-slider
+                                    v-model="scrubIndex"
+                                    :min="0"
+                                    :max="Math.max(0, snapshots.length - 1)"
+                                    :step="1"
+                                    hide-details
+                                    color="#364153"
+                                    track-color="#E5E8EB"
+                                    thumb-size="12"
+                                    density="compact"
+                                    class="scrub-slider"
+                                    @update:model-value="onScrub"
+                                    @start="isPlaying = false"
+                                />
+                                <span class="info-text scrub-count">{{ scrubIndex + 1 }} / {{ snapshots.length }}</span>
+                            </v-row>
+                        </v-row>
+
+                        <!-- 하단: score 추이 차트 -->
+                        <v-row no-gutters class="flex-column | px-5 | pb-4" style="flex-shrink: 0;">
+                            <v-row no-gutters class="align-item-center | justify-space-between | mb-2">
+                                <v-row no-gutters class="align-item-center">
+                                    <v-icon size="15" color="#6A7282" class="mr-1">mdi-chart-line</v-icon>
+                                    <span class="info-text">실시간 AI 분석 추이</span>
+                                </v-row>
+                                <v-row no-gutters cols="auto" style="gap: 6px;">
+                                    <v-btn
+                                        v-for="metric in availableMetrics"
+                                        :key="metric.key"
+                                        size="x-small"
+                                        :variant="activeMetrics.includes(metric.key) ? 'outlined' : 'text'"
+                                        class="small-btn"
+                                        :class="activeMetrics.includes(metric.key) ? 'outline-grey' : ''"
+                                        @click="toggleMetric(metric.key)"
+                                    >{{ metric.label }}</v-btn>
+                                </v-row>
+                            </v-row>
+                            <div class="chart-wrap">
+                                <canvas ref="chartCanvas" />
+                            </div>
+                        </v-row>
+                    </v-col>
+
+                    <!-- 우측: 메트릭 패널 -->
+                    <v-col cols="4" class="d-flex | flex-column | metric-panel" style="overflow-y: auto; scrollbar-width: thin;">
+
+                        <!-- 현재 시점 AI 결과 -->
+                        <div class="rsec">
+                            <div class="rsh">AI 판정 결과 (현재 시점)</div>
+                            <v-row no-gutters class="align-item-center | justify-space-between | mb-2">
+                                <span class="metric-score-num" :style="{ color: scoreColor(currentSnapshot?.score) }">{{ currentSnapshot?.score ?? '—' }}</span>
+                                <v-chip
+                                    size="x-small"
+                                    :color="currentSnapshot?.passed ? '#16A34A' : '#9AA3AF'"
+                                    variant="tonal"
+                                >{{ currentSnapshot?.passed ? 'PASSED' : 'NOT PASSED' }}</v-chip>
+                            </v-row>
+                            <div class="drow"><span class="dk">category</span><span class="dv">{{ currentSnapshot?.category || '—' }}</span></div>
+                            <div class="drow"><span class="dk">progress</span><span class="dv">{{ currentProgressPct }}</span></div>
+                            <div class="drow"><span class="dk">action</span><span class="dv">{{ currentSnapshot?.action || '—' }}</span></div>
+                            <div class="drow"><span class="dk">axis</span><span class="dv">{{ currentSnapshot?.axis || '—' }}</span></div>
+                        </div>
+
+                        <!-- 카메라 / 자세 정보 -->
+                        <div class="rsec">
+                            <div class="rsh">카메라 · 자세 정보</div>
+                            <div class="drow"><span class="dk">orientation</span><span class="dv">{{ currentSnapshot?.orientation || '—' }}</span></div>
+                            <div class="drow"><span class="dk">head state</span><span class="dv">{{ currentSnapshot?.headState || '—' }}</span></div>
+                            <div class="drow"><span class="dk">pitch</span><span class="dv">{{ fmt(currentSnapshot?.pitchDeg, 1) }}°</span></div>
+                            <div class="drow"><span class="dk">roll</span><span class="dv">{{ fmt(currentSnapshot?.rollDeg, 1) }}°</span></div>
+                            <div class="drow"><span class="dk">zoom</span><span class="dv">{{ fmt(currentSnapshot?.zoomFactor, 2) }}x</span></div>
+                            <div class="drow"><span class="dk">focal (35mm eq)</span><span class="dv">{{ fmt(currentSnapshot?.focalMm35eq, 1) }}mm</span></div>
+                            <div class="drow"><span class="dk">aspect ratio</span><span class="dv">{{ currentSnapshot?.aspectRatio || '—' }}</span></div>
+                            <div class="drow"><span class="dk">torso distance</span><span class="dv">{{ fmt(currentSnapshot?.torsoDistM, 2) }}m</span></div>
+                            <div class="drow"><span class="dk">body height frac</span><span class="dv">{{ fmt(currentSnapshot?.bodyHeightFrac, 2) }}</span></div>
+                            <div class="drow"><span class="dk">face visible kp</span><span class="dv">{{ currentSnapshot?.faceVis ?? '—' }}/68</span></div>
+                        </div>
+
+                        <!-- 피드백 메시지 / reason -->
+                        <div class="rsec">
+                            <div class="rsh">피드백</div>
+                            <div class="feedback-box">{{ currentSnapshot?.feedback || '피드백 없음' }}</div>
+                            <div v-if="currentSnapshot?.reason" class="reason-box">{{ currentSnapshot.reason }}</div>
+                        </div>
+
+                        <!-- 세션 요약 -->
+                        <div class="rsec">
+                            <div class="rsh">세션 요약</div>
+                            <div class="drow"><span class="dk">총 프레임 수</span><span class="dv">{{ snapshots.length }}</span></div>
+                            <div class="drow"><span class="dk">평균 점수</span><span class="dv">{{ avgScore }}</span></div>
+                            <div class="drow"><span class="dk">통과 비율</span><span class="dv">{{ passedRate }}</span></div>
+                        </div>
+                    </v-col>
                 </v-row>
             </v-col>
         </v-row>
@@ -398,22 +499,27 @@ const skeletonGroups = [
 const chartCanvas   = ref(null);
 let   chartInstance = null;
 
+// realtime-sample.json: snapshots[].res = { score, passed, category, feedback, metadata: { progress, ... } }
 const availableMetrics = [
-    { key: 'score',       label: '종합 점수' },
-    { key: 'poseScore',   label: '포즈'      },
-    { key: 'angleScore',  label: '앵글'      },
-    { key: 'compScore',   label: '구도'      },
+    { key: 'score',    label: 'score'    },
+    { key: 'progress', label: 'progress' },
 ];
-const activeMetrics = ref(['score', 'poseScore']);
+const activeMetrics = ref(['score', 'progress']);
 
 const snapshotHeaders = [
-    { title: '#',         key: 'idx',        width: '40px'  },
-    { title: '시각',      key: 'ts',         width: '120px' },
-    { title: '종합 점수', key: 'score'                      },
-    { title: '포즈',      key: 'poseScore'                  },
-    { title: '앵글',      key: 'angleScore'                 },
-    { title: '구도',      key: 'compScore'                  },
-];
+    { title: '#',     key: 'idx',      width: '40px'  },
+    { title: '시각',  key: 'ts',       width: '120px' },
+    { title: 'score', key: 'score'                    },
+    { title: 'category', key: 'category'              },
+    { title: 'passed',   key: 'passedLabel'           },
+]; // 참고용 — 추후 스냅샷 목록 테이블 재사용 시 활용
+
+// ----- 라이브 pose 캔버스 / 시점 선택(슬라이드) ----- //
+const liveCanvasRef = ref(null);
+const scrubIndex    = ref(0);   // 현재 선택된 snapshot index
+const isPlaying     = ref(false);
+let   playTimer     = null;
+const PLAY_INTERVAL_MS = 33; // 초당 프레임에 맞춘 재생 간격 (~30fps 배치 기준)
 
 const dialog = ref({
     title: '',
@@ -456,12 +562,11 @@ const sessionDuration = computed(() => {
 
 const snapshotTableItems = computed(() =>
     snapshots.value.map((s, i) => ({
-        idx:        i + 1,
-        ts:         s.ts ? util.formatUnixDateTime(s.ts) : '—',
-        score:      s.score      ?? s.aiResult?.score      ?? null,
-        poseScore:  s.poseScore  ?? s.aiResult?.poseScore  ?? null,
-        angleScore: s.angleScore ?? s.aiResult?.angleScore ?? null,
-        compScore:  s.compScore  ?? s.aiResult?.compScore  ?? null,
+        idx:         i + 1,
+        ts:          s.ts ? util.formatUnixDateTime(s.ts) : '—',
+        score:       s.score ?? null,
+        category:    s.category || '—',
+        passedLabel: s.passed ? 'PASS' : '—',
     }))
 );
 
@@ -530,6 +635,55 @@ const poseOverlay = computed(() => {
     return { points: normalizeKpsIntoBbox(points, bbox), bbox };
 });
 
+// ----- 현재 선택 시점(슬라이드 위치)의 스냅샷 ----- //
+const currentSnapshot = computed(() => snapshots.value[scrubIndex.value] || null);
+
+// cur.kp(133pt hex) + cur.bbox(hex) → 라이브 pose 캔버스용 keypoint
+const livePoseOverlay = computed(() => {
+    const s = currentSnapshot.value;
+    if (!s) return null;
+    const bbox    = parseBboxHex(s.bboxHex);
+    const fromHex = parsePoseKpHex(s.kpHex);
+    if (!fromHex.length) return null;
+    return { points: normalizeKpsIntoBbox(fromHex, bbox), bbox };
+});
+
+const currentSnapshotHasPose = computed(() => !!livePoseOverlay.value?.points?.length);
+
+const fmt = (v, d = 1, fb = '—') => {
+    const n = Number(v);
+    return isFinite(n) ? n.toFixed(d) : fb;
+};
+
+const currentFrameTime = computed(() => {
+    const ts = currentSnapshot.value?.ts;
+    return ts ? util.formatUnixDateTime(ts) : '—';
+});
+
+const currentFaceVis = computed(() => {
+    const v = currentSnapshot.value?.faceVis;
+    return v == null ? '—' : `${v}/68`;
+});
+
+const currentProgressPct = computed(() => {
+    const p = currentSnapshot.value?.progress;
+    return p == null ? '—' : `${Math.round(p * 100)}%`;
+});
+
+const avgScore = computed(() => {
+    if (!snapshots.value.length) return '—';
+    const scores = snapshots.value.map(s => Number(s.score)).filter(isFinite);
+    if (!scores.length) return '—';
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    return avg.toFixed(1);
+});
+
+const passedRate = computed(() => {
+    if (!snapshots.value.length) return '—';
+    const passedCount = snapshots.value.filter(s => s.passed).length;
+    return `${((passedCount / snapshots.value.length) * 100).toFixed(1)}%`;
+});
+
 // ----- 라이프 사이클 ----- //
 onMounted(() => {
     emit('show-right-btn');
@@ -542,13 +696,16 @@ onMounted(() => {
 
     fetchSessionDetail();
     window.addEventListener('resize', drawSkeleton);
+    window.addEventListener('resize', drawLiveSkeleton);
 });
 
 onBeforeUnmount(() => {
     if (chartInstance) {
         chartInstance.destroy();
     }
+    stopPlay();
     window.removeEventListener('resize', drawSkeleton);
+    window.removeEventListener('resize', drawLiveSkeleton);
 });
 
 watch(activeMetrics, () => {
@@ -561,6 +718,19 @@ watch(
         nextTick(drawSkeleton);
     },
 );
+
+// 슬라이드로 시점이 바뀔 때마다 라이브 pose 캔버스 다시 그리기
+watch(scrubIndex, () => {
+    nextTick(drawLiveSkeleton);
+    syncChartNeedle();
+});
+
+// snapshots가 새로 로드되면 가장 최근(마지막) 시점으로 초기화
+watch(snapshots, (list) => {
+    stopPlay();
+    scrubIndex.value = list.length ? list.length - 1 : 0;
+    nextTick(drawLiveSkeleton);
+});
 
 // ----- 함수 정의 ----- //
 async function fetchSessionDetail() {
@@ -583,6 +753,7 @@ async function fetchSessionDetail() {
 
         const data = response?.data || {};
 
+        // ── session 정보 매핑 (data.session) ──
         session.value = {
             id:        data.session?.id        || '',
             userId:    data.session?.userId    ?? null,
@@ -599,7 +770,59 @@ async function fetchSessionDetail() {
             uDate: util.formatUnixDateTime(data.session?.uDate),
         };
 
-        snapshots.value = Array.isArray(data.snapshots) ? data.snapshots : [];
+        // ── snapshots 정보 매핑 (data.snapshots[]) ──
+        // 봉투: { tid, fseq, gate, offsetMs, cur: {...}, res: { score, passed, category, feedback, metadata } }
+        const rawSnapshots = Array.isArray(data.snapshots) ? data.snapshots : [];
+
+        snapshots.value = rawSnapshots.map((f) => {
+            const cur  = f.cur ?? {};
+            const res  = f.res ?? {};
+            const meta = res.metadata ?? {};
+
+            return {
+                // ── 봉투/머리 ──
+                ts:       f.tid ?? null,
+                fseq:     f.fseq ?? null,
+                offsetMs: f.offsetMs ?? null,
+                gate:     f.gate ?? null,
+                phase:    f.phase ?? null,
+                pidx:     f.pidx ?? null,
+
+                // ── cur (카메라/자세 메타) ──
+                size:           cur.size ?? null,
+                aspectRatio:    cur.aspectRatio ?? null,
+                zoomFactor:     cur.zoomFactor ?? null,
+                focalMm35eq:    cur.focalMm35eq ?? null,
+                torsoDistM:     cur.torsoDistM ?? null,
+                torsoLength:    cur.torsoLength ?? null,
+                bodyHeightFrac: cur.bodyHeightFrac ?? null,
+                pitchDeg:       cur.pitchDeg ?? null,
+                rollDeg:        cur.rollDeg ?? null,
+                centroid:       cur.centroid ?? null,
+                faceVis:        cur.faceVis ?? null,
+                mirror:         cur.mirror ?? null,
+                orientation:    cur.orientation ?? null,
+                headState:      cur.headState ?? null,
+                angleLabel:     cur.angleLabel ?? null,
+
+                // pose 시각화용 raw hex (kp: 133pt keypoint, bboxHex: 인물 bbox)
+                kpHex:   cur.kp ?? null,
+                pvHex:   cur.pv ?? null,
+                bboxHex: cur.bbox ?? null,
+
+                // ── res (AI 판정 결과) ──
+                score:    res.score    ?? null,
+                passed:   res.passed   ?? false,
+                category: res.category ?? null,
+                feedback: res.feedback ?? null,
+                axis:     meta.axis     ?? null,
+                action:   meta.action   ?? null,
+                reason:   meta.reason   ?? null,
+                progress: meta.progress ?? null,
+                stuckSec: meta.stuckSec ?? null,
+                canCapture: meta.canCapture ?? false,
+            };
+        });
 
         if (session.value.imgId) {
             fetchRefImgDetail(session.value.imgId);
@@ -752,6 +975,104 @@ function handleImageLoad() {
     drawSkeleton();
 }
 
+// ----- 라이브 pose 캔버스 (중앙) 그리기: snapshots[scrubIndex].kpHex/bboxHex 기반 ----- //
+function drawLiveSkeleton() {
+    const canvas = liveCanvasRef.value;
+    if (!canvas) return;
+
+    const wrap = canvas.parentElement;
+    const W = wrap?.clientWidth  || 0;
+    const H = wrap?.clientHeight || 0;
+    if (!W || !H) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width  = `${W}px`;
+    canvas.style.height = `${H}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const pose = livePoseOverlay.value;
+    if (!pose?.points?.length) return;
+
+    const pts = pose.points;
+    const thr = 0.05;
+
+    // bbox 점선 사각형
+    if (pose.bbox) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(16,185,129,0.9)';
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(pose.bbox.x * W, pose.bbox.y * H, pose.bbox.w * W, pose.bbox.h * H);
+        ctx.restore();
+    }
+
+    // 연결선 그리기 (COCO17 + FOOT + FACE + HAND, RefImgAiDocs/SysDetail 레퍼런스 동일 로직)
+    const drawConn = (conns, color, lw) => {
+        conns.forEach(([si, ei]) => {
+            const s = pts[si], e = pts[ei];
+            if (!s || !e) return;
+            const a = Math.min(s.conf ?? 0, e.conf ?? 0);
+            ctx.globalAlpha = a < thr ? 0.08 : clamp(a, 0.2, 1);
+            ctx.strokeStyle = color;
+            ctx.lineWidth   = lw;
+            ctx.beginPath();
+            ctx.moveTo(s.x * W, s.y * H);
+            ctx.lineTo(e.x * W, e.y * H);
+            ctx.stroke();
+        });
+    };
+
+    ctx.save();
+    drawConn(COCO17, GRP_CSS.body, 2.4);
+    drawConn(FOOT,   GRP_CSS.foot, 1.8);
+    drawConn(FACE,   GRP_CSS.face, 1.0);
+    drawConn(L_HAND, GRP_CSS.hand, 1.4);
+    drawConn(R_HAND, GRP_CSS.hand, 1.4);
+    ctx.restore();
+
+    // 관절 점
+    ctx.save();
+    pts.forEach((p, i) => {
+        const g = grpOf(i);
+        const r = g === 'body' ? 4 : g === 'foot' ? 3.2 : 2.2;
+        const a = Number(p.conf ?? 0);
+        ctx.globalAlpha = a < thr ? 0.15 : clamp(a, 0.25, 1);
+        ctx.fillStyle   = GRP_CSS[g];
+        ctx.beginPath();
+        ctx.arc(p.x * W, p.y * H, r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.restore();
+}
+
+// 차트 위에 현재 슬라이더 위치(scrubIndex)를 세로선으로 표시하는 커스텀 플러그인
+const chartNeedlePlugin = {
+    id: 'scrubNeedle',
+    afterDraw(chart) {
+        const idx = scrubIndex.value;
+        const meta = chart.getDatasetMeta(0);
+        const point = meta?.data?.[idx];
+        if (!point) return;
+        const { ctx, chartArea } = chart;
+        ctx.save();
+        ctx.strokeStyle = '#FF6129';
+        ctx.lineWidth   = 1.3;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(point.x, chartArea.top);
+        ctx.lineTo(point.x, chartArea.bottom);
+        ctx.stroke();
+        ctx.restore();
+    },
+};
+
 async function renderChart() {
     if (!snapshots.value.length || !chartCanvas.value) {
         return;
@@ -766,28 +1087,34 @@ async function renderChart() {
     }
 
     const colorMap = {
-        score:      '#4A5565',
-        poseScore:  '#364153',
-        angleScore: '#6A7282',
-        compScore:  '#9AA3AF',
+        score:    '#364153',
+        progress: '#9AA3AF',
     };
 
     const labels = snapshots.value.map((s, i) =>
         s.ts ? util.formatUnixDateTime(s.ts) : `#${i + 1}`
     );
 
+    // progress는 0~1 스케일이므로 score(0~100)와 같은 축에서 보기 위해 100배 스케일
+    const valueOf = (s, key) => {
+        if (key === 'progress') {
+            return s.progress == null ? null : Math.round(s.progress * 100);
+        }
+        return s[key] ?? null;
+    };
+
     const datasets = availableMetrics
         .filter((m) => activeMetrics.value.includes(m.key))
         .map((m) => ({
             label:            m.label,
-            data:             snapshots.value.map((s) => s[m.key] ?? s.aiResult?.[m.key] ?? null),
+            data:             snapshots.value.map((s) => valueOf(s, m.key)),
             borderColor:      colorMap[m.key],
             backgroundColor:  colorMap[m.key] + '22',
             fill:             true,
-            tension:          0.4,
-            pointRadius:      3,
-            pointHoverRadius: 6,
-            borderWidth:      2,
+            tension:          0.35,
+            pointRadius:      0,
+            pointHoverRadius: 5,
+            borderWidth:      1.6,
         }));
 
     chartInstance = new Chart(chartCanvas.value, {
@@ -796,7 +1123,15 @@ async function renderChart() {
         options: {
             responsive:          true,
             maintainAspectRatio: false,
+            animation:           false,
             interaction: { mode: 'index', intersect: false },
+            onClick: (evt, elements, chart) => {
+                const points = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+                if (points.length) {
+                    isPlaying.value = false;
+                    scrubIndex.value = points[0].index;
+                }
+            },
             plugins: {
                 legend: {
                     display: true,
@@ -812,7 +1147,7 @@ async function renderChart() {
             },
             scales: {
                 x: {
-                    ticks: { color: '#6A7282', font: { size: 10 } },
+                    ticks: { color: '#6A7282', font: { size: 10 }, maxTicksLimit: 8 },
                     grid:  { color: '#E5E8EB' },
                 },
                 y: {
@@ -823,7 +1158,16 @@ async function renderChart() {
                 },
             },
         },
+        plugins: [chartNeedlePlugin],
     });
+
+    syncChartNeedle();
+}
+
+function syncChartNeedle() {
+    if (chartInstance) {
+        chartInstance.draw();
+    }
 }
 
 function toggleMetric(key) {
@@ -832,6 +1176,38 @@ function toggleMetric(key) {
         activeMetrics.value.push(key);
     } else {
         activeMetrics.value.splice(idx, 1);
+    }
+}
+
+// ----- 슬라이드(시점 선택) + 재생 ----- //
+function onScrub(value) {
+    scrubIndex.value = Number(value) || 0;
+}
+
+function togglePlay() {
+    if (isPlaying.value) {
+        stopPlay();
+        return;
+    }
+    // 마지막 프레임에서 재생을 누르면 처음부터 다시 재생
+    if (scrubIndex.value >= snapshots.value.length - 1) {
+        scrubIndex.value = 0;
+    }
+    isPlaying.value = true;
+    playTimer = setInterval(() => {
+        if (scrubIndex.value >= snapshots.value.length - 1) {
+            stopPlay();
+            return;
+        }
+        scrubIndex.value += 1;
+    }, PLAY_INTERVAL_MS);
+}
+
+function stopPlay() {
+    isPlaying.value = false;
+    if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
     }
 }
 
@@ -972,11 +1348,210 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 .chart-wrap {
     position: relative;
-    height: 300px;
+    height: 160px;
     background-color: #ffffff;
     border: 0.7px solid #E5E8EB;
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px 12px;
+}
+
+/* ── 중앙 라이브 pose 스테이지 ── */
+.pose-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    background-color: #0b0b0f;
+    border: 0.7px solid #E5E8EB;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.pose-stage-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.live-pose-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.pose-empty-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.pose-empty-overlay .info-text {
+    color: #9AA3AF;
+}
+
+.pose-hud {
+    position: absolute;
+    z-index: 5;
+    background: rgba(10, 10, 14, 0.72);
+    border: 0.7px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 6px 10px;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+}
+
+.pose-hud-tl { top: 10px; left: 10px; }
+.pose-hud-tr { top: 10px; right: 10px; }
+.pose-hud-bl { bottom: 10px; left: 10px; }
+
+.pose-hud-label {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: #9AA3AF;
+    font-family: ui-monospace, monospace;
+}
+
+.pose-hud-main {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: ui-monospace, monospace;
+}
+
+.pose-hud-sub {
+    font-size: 10px;
+    color: #9AA3AF;
+    font-family: ui-monospace, monospace;
+}
+
+.pose-hud-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 10px;
+    font-family: ui-monospace, monospace;
+}
+
+.pose-hud-row span { color: #9AA3AF; }
+.pose-hud-row strong { color: #ffffff; font-weight: 600; }
+
+.pose-feedback {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    max-width: 80%;
+    background: rgba(10, 10, 14, 0.78);
+    border: 0.7px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 6px 14px;
+    color: #ffffff;
+    font-size: 11px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── 슬라이더 / 재생 버튼 ── */
+.play-btn {
+    border-color: #4A5565 !important;
+    color: #4A5565 !important;
+    flex-shrink: 0;
+}
+
+.play-btn--on {
+    border-color: #364153 !important;
+    background-color: #F3F4F6 !important;
+    color: #364153 !important;
+}
+
+.scrub-slider {
+    flex: 1 1 auto;
+}
+
+.scrub-count {
+    flex-shrink: 0;
+    min-width: 56px;
+    text-align: right;
+    font-family: ui-monospace, monospace;
+}
+
+/* ── 우측 메트릭 패널 ── */
+.metric-panel {
+    background-color: #fafafa;
+}
+
+.metric-panel .rsec {
+    padding: 14px 16px;
+    border-bottom: 1px solid #E5E8EB;
+}
+
+.rsh {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6A7282;
+    margin-bottom: 10px;
+    font-family: Pretendard;
+}
+
+.metric-score-num {
+    font-size: 28px;
+    font-weight: 800;
+    font-family: ui-monospace, monospace;
+    line-height: 1;
+}
+
+.drow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.drow:last-child {
+    margin-bottom: 0;
+}
+
+.dk {
+    font-size: 11px;
+    color: #6A7282;
+    font-family: Pretendard;
+}
+
+.dv {
+    font-size: 12px;
+    color: #364153;
+    font-weight: 500;
+    font-family: ui-monospace, monospace;
+    text-align: right;
+}
+
+.feedback-box {
+    font-size: 12px;
+    color: #364153;
+    background-color: #ffffff;
+    border: 0.7px solid #E5E8EB;
+    border-radius: 8px;
+    padding: 10px 12px;
+    line-height: 1.5;
+}
+
+.reason-box {
+    margin-top: 8px;
+    font-size: 10px;
+    color: #9AA3AF;
+    font-family: ui-monospace, monospace;
+    line-height: 1.5;
+    word-break: break-all;
 }
 
 .score-bar {
