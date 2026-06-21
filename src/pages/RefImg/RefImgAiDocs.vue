@@ -96,41 +96,7 @@
             <div class="section-label">Quality Overview</div>
             <div class="radar-chart-card">
               <div class="radar-chart-frame">
-                <svg viewBox="-132 -132 264 264" class="radar-chart-svg" aria-label="Quality radar chart">
-                  <g class="radar-grid">
-                    <circle v-for="level in [1,2,3,4,5]" :key="level" :r="level * 16" class="radar-grid-ring" />
-                  </g>
-                  <g class="radar-axes">
-                    <line
-                      v-for="item in radarAxes"
-                      :key="item.label"
-                      x1="0" y1="0"
-                      :x2="item.axisX"
-                      :y2="item.axisY"
-                      class="radar-axis-line"
-                    />
-                    <text
-                      v-for="item in radarAxes"
-                      :key="item.label + '-label'"
-                      :x="item.labelX"
-                      :y="item.labelY"
-                      :text-anchor="item.labelAnchor"
-                      :dy="item.labelDy"
-                      class="radar-axis-label"
-                    >{{ item.label }}</text>
-                  </g>
-                  <polygon :points="radarPolygonPoints" class="radar-polygon" />
-                  <g class="radar-points">
-                    <circle
-                      v-for="item in radarAxes"
-                      :key="item.label + '-point'"
-                      :cx="item.x"
-                      :cy="item.y"
-                      r="3.8"
-                      class="radar-point"
-                    />
-                  </g>
-                </svg>
+                <canvas ref="radarChartRef"></canvas>
               </div>
             </div>
           </div>
@@ -169,8 +135,14 @@
 
 <script setup>
 import * as THREE from 'three';
+import Chart from 'chart.js/auto';
+
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+
+const radarChartRef = ref(null);
+let radarChartInstance = null;
 
 // ─────────── Props / Emits ───────────
 const props = defineProps({
@@ -273,9 +245,73 @@ const radarAxes = computed(() => {
   });
 });
 
-const radarPolygonPoints = computed(() =>
-  radarAxes.value.map(item => `${item.x.toFixed(2)},${item.y.toFixed(2)}`).join(' ')
-);
+// 3. 차트 초기화 함수 추가
+const initRadarChart = () => {
+  if (!radarChartRef.value) return;
+  const ctx = radarChartRef.value.getContext('2d');
+
+  if (radarChartInstance) {
+    radarChartInstance.destroy();
+  }
+
+  radarChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      // 1. [라벨명, 값] 형태의 배열로 맵핑하여 줄바꿈 적용
+      labels: radarMetrics.value.map(m => [m.label, String(m.value)]),
+      datasets: [{
+        label: 'Quality Score',
+        data: radarMetrics.value.map(m => m.value),
+        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        borderColor: '#2563EB',
+        pointBackgroundColor: '#2563EB',
+        pointBorderColor: '#ffffff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#2563EB',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        // 2. 전체 레이아웃 여백 최소화
+        padding: 0 
+      },
+      scales: {
+        r: {
+          min: 0,
+          max: 5,
+          ticks: {
+            stepSize: 1,
+            display: false // 중앙 숫자 눈금 숨김
+          },
+          grid: { color: '#E5E7EB' },
+          angleLines: { color: '#D1D5DB' },
+          pointLabels: {
+            // 3. 라벨과 그래프 다각형 사이의 여백을 없애서(또는 음수) 차트 크기 확대
+            padding: 0, 
+            font: { size: 11, weight: '600' },
+            color: '#374151'
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+};
+
+// 4. 데이터 변경 시 차트 업데이트
+watch(() => radarMetrics.value, () => {
+  if (radarChartInstance) {
+    radarChartInstance.data.labels = radarMetrics.value.map(m => `${m.label}: ${m.value}`);
+    radarChartInstance.data.datasets[0].data = radarMetrics.value.map(m => m.value);
+    radarChartInstance.update();
+  }
+}, { deep: true });
+
 
 // ─────────── aiDocs 파싱 ───────────
 const decodeHex = h => { const v = parseInt(h, 16); return isFinite(v) ? v / 10000 : 0; };
@@ -825,14 +861,16 @@ const buildThreeScene = () => {
 onMounted(async () => {
   await nextTick();
   initThree();
+  initRadarChart(); // 차트 마운트
   window.addEventListener('resize', drawSkeleton);
 });
 
 onBeforeUnmount(() => {
-  if (animId)    cancelAnimationFrame(animId);
+  if (animId) cancelAnimationFrame(animId);
   if (resizeObs) resizeObs.disconnect();
-  if (controls)  controls.dispose();
-  if (renderer)  renderer.dispose();
+  if (controls) controls.dispose();
+  if (renderer) renderer.dispose();
+  if (radarChartInstance) radarChartInstance.destroy(); // 차트 인스턴스 파기
   window.removeEventListener('resize', drawSkeleton);
 });
 
@@ -1048,9 +1086,20 @@ watch(
 .radar-chart-frame {
   width: 100%;
   min-height: 260px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible; /* 확대 시 바깥으로 나가는 것을 허용 */
+}
+
+/* 캔버스가 부모를 꽉 채우도록 설정 + scale 확대 */
+.radar-chart-frame canvas {
+  width: 100% !important;
+  height: 100% !important;
+  
+  /* 4. 그래프가 너무 작아보일 경우, scale을 1.1~1.2 정도로 조정하여 강제 확대 */
+  transform: scale(1.15); 
 }
 
 .radar-chart-svg {
