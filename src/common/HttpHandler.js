@@ -601,14 +601,23 @@ export async function deleteProduct(params = {}) {
 
 // ----- 세션 관련 API ----- //
 export async function listSessions(params = {}) {
-  return request('POST', '/session/list', {
+  const filterBody = compact({
+    userId: params.userId ?? null,
+    imgId: params.imgId ?? null,
+    sStat: params.sStat ?? null,
+    sDate: params.sDate ?? null,
+    eDate: params.eDate ?? null,
+    category: params.category ?? null,
+    feedback: params.feedback ?? null,
+    minStuckSec: params.minStuckSec ?? null,
+    canCapture: params.canCapture ?? null,
+  });
+ 
+  return request('POST', '/api/session/list', {
     body: compact({
       page: params.page,
       limit: params.limit,
-      userId: params.userId,
-      imgId: params.imgId,
-      sortBy: params.sortBy,
-      sortOrder: params.sortOrder,
+      filter: filterBody || {},
     }),
   });
 }

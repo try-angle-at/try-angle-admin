@@ -55,7 +55,6 @@ const Util = (function () {
 
                 return `${year}-${month}-${day}`;
             },
-
             formatUnixDateTime(value) {
                 if (value === null || value === undefined || value === '') {
                     return '-';

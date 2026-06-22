@@ -1,21 +1,86 @@
 <template>
     <v-container fluid>
         <v-row no-gutters class="search-row | align-item-center | justify-space-between">
-            <v-col cols="auto" class="align-item-center | d-flex">
-                <v-text-field
-          v-model="search.userId"
-          placeholder="사용자 ID 검색"
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-        <v-text-field
-          v-model="search.imgId"
-          placeholder="이미지 ID 검색"
-          class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
+            <v-col cols="auto" class="align-item-center | d-flex | justify-start">
+              <v-text-field
+                  v-model="search.userId"
+                  placeholder="사용자 ID"
+                  class="inputbox | mr-2"
+                  type="number"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-text-field
+                  v-model="search.imgId"
+                  placeholder="이미지 ID"
+                  class="inputbox | mr-2"
+                  type="number"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-select
+                  v-model="search.sStat"
+                  :items="statusItems"
+                  item-title="label"
+                  item-value="value"
+                  placeholder="세션 상태"
+                  class="inputbox | mr-2"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-text-field
+                  v-model="search.sDateStr"
+                  placeholder="시작일 (YYYY-MM-DD)"
+                  class="datebox | mr-2"
+                  type="date"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-text-field
+                  v-model="search.eDateStr"
+                  placeholder="종료일 (YYYY-MM-DD)"
+                  class="datebox"
+                  type="date"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+            </v-col>
+            <v-col cols="auto" class="align-item-center | d-flex | mt-3">
+              <v-select
+                  v-model="search.category"
+                  :items="categoryItems"
+                  item-title="label"
+                  item-value="value"
+                  placeholder="촬영 단계 (category)"
+                  class="inputbox | mr-2"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-text-field
+                  v-model="search.feedback"
+                  placeholder="피드백 문구 키워드"
+                  class="inputbox | mr-2"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-text-field
+                  v-model="search.minStuckSec"
+                  placeholder="최소 정체 시간 (초)"
+                  class="inputbox | mr-2"
+                  type="number"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
+              <v-select
+                  v-model="search.canCapture"
+                  :items="canCapItems"
+                  item-title="label"
+                  item-value="value"
+                  placeholder="자동촬영 여부"
+                  class="inputbox"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                  hide-details
+              />
             </v-col>
             <v-col cols="auto" class="align-item-center">
                 <v-btn
@@ -111,8 +176,16 @@ const router = useRouter();
 const util = Util.getInstance();
 
 const search = ref({
-  userId: '',
-  imgId: '',
+    userId:      null,
+    imgId:       null,
+    sStat:       null,
+    sDateStr:    '',    // date input용 문자열 → Unix 변환 후 전송
+    eDateStr:    '',
+    // [신규] 스냅샷 비즈니스 지표 필터
+    category:    null,
+    feedback:    '',
+    minStuckSec: null,
+    canCapture:  null,
 });
 
 const pageNation = ref({
@@ -122,9 +195,11 @@ const pageNation = ref({
 
 const totalCount = ref(0);
 const isLoading = ref(false);
-const statusOptions = ref([
+const statusItems = ref([
   { label: '전체 상태', value: null },
 ]);
+const canCapItems = ref([]);
+const categoryItems = ref([]);
 
 const headerItems = [
   { text: '세션 ID', value: 'id' },
@@ -139,6 +214,7 @@ const headerItems = [
   { text: '상세', value: 'action' },
 ];
 
+
 const tableItems = ref([]);
 
 // ----- 라이프 사이클 ----- //
@@ -150,70 +226,55 @@ onMounted(() => {
 
 // ----- 함수 정의 ----- //
 function getStatusLabel(value) {
-  const matchedOption = statusOptions.value.find((option) => option.value === value || option.value === String(value));
+  const matchedOption = statusItems.value.find((option) => option.value === value || option.value === String(value));
   return matchedOption?.label || '-';
 }
 
-function formatDevice(device) {
-  if (!device || typeof device !== 'object') {
-    return '-';
-  }
-
-  const platform = device.platform || '-';
-  const appVersion = device.appVersion || '-';
-  return `${platform} / ${appVersion}`;
-}
-
-function parseOptionalNumber(value) {
-  if (value === '' || value === null || value === undefined) {
-    return null;
-  }
-
-  const parsedValue = Number(value);
-  return Number.isNaN(parsedValue) ? null : parsedValue;
-}
-
 async function fetchListSessions() {
-  isLoading.value = true;
+    isLoading.value = true;
+    try {
+        const s = search.value;
 
-  try {
-    const response = await HttpHandler.listSessions({
-      page: pageNation.value.current,
-      limit: pageNation.value.limit,
-      userId: parseOptionalNumber(search.value.userId),
-      imgId: parseOptionalNumber(search.value.imgId),
-      sortBy: 'cDate',
-      sortOrder: 'desc',
-    });
+        const response = await HttpHandler.listSessions({
+            page:  pageNation.value.current,
+            limit: pageNation.value.limit,
 
-    const list = response?.data?.items || [];
-    const total = response?.data?.total || 0;
-    
-    const mappedRows = list.map((session = {}) => ({
-      id: session.id ?? '-',
-      userName: session.userName || '-',
-      imgId: session.imgId ?? '-',
-      sDate: util.formatUnixDateTime(session.sDate),
-      eDate: util.formatUnixDateTime(session.eDate),
-      sDateRaw: session.sDate,
-      eDateRaw: session.eDate,
-      device: formatDevice(session.device),
-      sStat: session.sStat,
-      cDate: util.formatUnixDateTime(session.cDate),
-      uDate: util.formatUnixDateTime(session.uDate),
-      action: '상세보기',
-    }));
+            // 기본 필터
+            userId: s.userId  ? Number(s.userId)  : null,
+            imgId:  s.imgId   ? Number(s.imgId)   : null,
+            sStat:  s.sStat   !== null ? Number(s.sStat) : null,
+            sDate:  util.formatUnixDateTime(s.sDateStr),
+            eDate:  util.formatUnixDateTime(s.eDateStr),
 
-    totalCount.value = total;
-    tableItems.value = mappedRows;
+            // [신규] 스냅샷 비즈니스 지표 필터
+            category:    s.category    || null,
+            feedback:    s.feedback    || null,
+            minStuckSec: s.minStuckSec ? Number(s.minStuckSec) : null,
+            canCapture:  s.canCapture  || null,
+        });
 
-  } catch (error) {
-    console.error('세션 목록 조회 실패:', error);
-    tableItems.value = [];
-    totalCount.value = 0;
-  } finally {
-    isLoading.value = false;
-  }
+        const list  = response?.data?.items || [];
+        const total = response?.data?.total || 0;
+
+        tableItems.value = list.map((item = {}) => ({
+            id:       item.id,
+            userId:   item.userId,
+            userName: item.userName || '-',
+            imgId:    item.imgId,
+            sStat:    item.sStat,
+            sDate:    util.formatUnixDateTime(item.sDate),
+            eDate:    item.eDate ? util.formatUnixDateTime(item.eDate) : '-',
+        }));
+
+        totalCount.value = total;
+
+    } catch (error) {
+        console.error('세션 목록 조회 실패:', error);
+        tableItems.value = [];
+        totalCount.value = 0;
+    } finally {
+        isLoading.value = false;
+    }
 }
 
 async function fetchStatusLabelOption() {
@@ -241,21 +302,24 @@ async function fetchStatusLabelOption() {
       });
     });
 
-    statusOptions.value = [
+    statusItems.value = [
       { label: '전체 상태', value: null },
       ...Array.from(uniqueStatusOptions.values()),
     ];
   } catch (error) {
     console.error('세션 상태 옵션 조회 실패:', error);
-    statusOptions.value = [{ label: '전체 상태', value: null }];
+    statusItems.value = [{ label: '전체 상태', value: null }];
   }
 }
 
 function handleClickBtn(action, value) {
   switch (action) {
     case 'reset':
-      search.value.userId = '';
-      search.value.imgId = '';
+      search.value = {
+          userId: null, imgId: null, sStat: null,
+          sDateStr: '', eDateStr: '',
+          category: null, feedback: '', minStuckSec: null, canCapture: null,
+      };
       pageNation.value.current = 1;
       fetchListSessions();
       break;
