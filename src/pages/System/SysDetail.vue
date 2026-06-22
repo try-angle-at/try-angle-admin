@@ -207,6 +207,27 @@
                 <div class="feedback-box">{{ currentSnapshot?.feedback || '피드백 없음' }}</div>
                 <div v-if="currentSnapshot?.reason" class="reason-box">{{ currentSnapshot.reason }}</div>
             </div>
+
+            <div class="rsec border-bottom-none">
+                <v-row no-gutters class="align-center justify-space-between mb-2">
+                    <div class="rsh" style="margin-bottom: 0;">원본 데이터</div>
+                    <v-btn 
+                        variant="text" 
+                        size="small" 
+                        class="raw-data-toggle-btn" 
+                        @click="isRawDataOpen = !isRawDataOpen"
+                    >
+                        {{ isRawDataOpen ? '접기' : '더보기' }}
+                        <v-icon right>{{ isRawDataOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                    </v-btn>
+                </v-row>
+                
+                <v-expand-transition>
+                    <div v-show="isRawDataOpen" class="raw-data-box">
+                        <pre>{{ forCurSnapshot }}</pre>
+                    </div>
+                </v-expand-transition>
+            </div>
         </v-col>
     </v-row>
 </v-col>
@@ -319,6 +340,7 @@ const refImgDetail = ref({
 
 const isSessionLoading = ref(false);
 const isRefLoading     = ref(false);
+const isRawDataOpen = ref(false);
 
 
 const statusOptions = ref([]);
@@ -456,15 +478,11 @@ const sessionDuration = computed(() => {
     return `${Math.floor(sec / 60)}분 ${sec % 60}초`;
 });
 
-const snapshotTableItems = computed(() =>
-    snapshots.value.map((s, i) => ({
-        idx:         i + 1,
-        ts:          s.ts ? util.formatUnixDateTime(s.ts) : '—',
-        score:       s.score ?? null,
-        category:    s.category || '—',
-        passedLabel: s.passed ? 'PASS' : '—',
-    }))
-);
+const forCurSnapshot = computed(() => {
+    if (!currentSnapshot.value) return '데이터 없음';
+    // JSON 객체를 읽기 쉽게 포맷팅 (들여쓰기 2칸)
+    return JSON.stringify(currentSnapshot.value, null, 2);
+});
 
 // aiDoc → 키포인트 파싱 (RefImgAiDocs 동일 로직)
 const decodeHex = h => {
@@ -1298,12 +1316,7 @@ function buildThreeScene3d() {
         if (validYs.length) {
             skelGroup3d.position.y = -Math.min(...validYs);
         }
-    } else {
-        const mat  = new THREE.MeshStandardMaterial({ color: 0xd1d5db, wireframe: true });
-        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12), mat);
-        mesh.position.set(0, 0.85, 0);
-        skelGroup3d.add(mesh);
-    }
+    } 
 
     threeScene.add(skelGroup3d);
 
