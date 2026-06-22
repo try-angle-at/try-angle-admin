@@ -22,13 +22,15 @@
     </v-row>
 
     <v-row no-gutters>
-      <v-col cols="5" class="img-frame">
-        <v-img
-          v-if="prodDetail.thumbUrl"
-          :src="prodDetail.thumbUrl"
-          aspect-ratio="1"
-          cover
-        />
+      <v-col cols="5">
+        <div class="img-frame">
+          <v-img
+            v-if="prodDetail.thumbUrl"
+            :src="prodDetail.thumbUrl"
+            aspect-ratio="1"
+            cover
+          />
+        </div>
       </v-col>
 
       <v-col cols="7" class="pl-8 | pr-4">
@@ -579,12 +581,16 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 }
 
 .img-frame {
-  width: 100%;
-  padding-top: 100%;
   position: relative;
-  background-color: #ffffff;
-  border: 0.7px solid #E5E8EB;
+  align-items: center;
+  display: flex;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background-color: #F9FAFB;
+  border: 1.5px solid #C0C8D4;
   border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .inputbox :deep(.v-field__input) {

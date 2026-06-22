@@ -542,7 +542,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
   width: 100%;
   aspect-ratio: 1 / 1;
   background-color: #F9FAFB;
-  border: 1.5px dashed #C0C8D4;
+  border: 1.5px solid #C0C8D4;
   border-radius: 8px;
   cursor: pointer;
   overflow: hidden;
