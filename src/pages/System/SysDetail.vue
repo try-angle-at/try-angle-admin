@@ -42,13 +42,13 @@
                     {{ refImgDetail.ctgName }}
                 </v-chip>
                 <v-chip
-                    v-for="tag in refImgDetail.kwd"
-                    :key="tag"
+                    v-for="tagCode in refImgDetail.kwd"
+                    :key="tagCode"
                     size="small"
                     variant="outlined"
                     class="tag-chip | mr-1 | mb-1"
                 >
-                    # {{ tag }}
+                    # {{ getTagLabel(tagCode) }}
                 </v-chip>
             </div>
         </div>
@@ -365,6 +365,7 @@ const isRefLoading     = ref(false);
 
 
 const statusOptions = ref([]);
+const tagOptions = ref([]);
 
 // ----- 스켈레톤 관련 ----- //
 const imageRef   = ref(null);
@@ -453,7 +454,6 @@ const dialog = ref({
     okButton() {},
 });
 
-// ----- computed ----- //
 // ----- computed ----- //
 const statusLabel = computed(() => {
     // API로 불러온 동적 옵션에서 현재 세션 상태와 일치하는 값을 찾음
@@ -643,6 +643,7 @@ onMounted(() => {
     // 상태 라벨 옵션 먼저 조회 후 세션 상세 정보 조회
     fetchStatusLabelOption().then(() => {
         fetchSessionDetail();
+        fetchTagCategory();
     });
     
     window.addEventListener('resize', drawSkeleton);
@@ -729,6 +730,47 @@ async function fetchStatusLabelOption() {
     console.error('세션 상태 옵션 조회 실패:', error);
     statusOptions.value = [{ label: '알 수 없음', value: null }];
   }
+}
+
+async function fetchTagCategory() {
+  try {
+    const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
+      HttpHandler.listTags({ page: 0, parentCode: 'MOOD_ROOT', tagName: null }),
+      HttpHandler.listTags({ page: 0, parentCode: 'CLOTH_ROOT', tagName: null }),
+      HttpHandler.listTags({ page: 0, parentCode: 'SHOT_ROOT', tagName: null }),
+    ]);
+
+    const moodTagItems = moodTagResponse?.data?.items || [];
+    const clothTagItems = clothTagResponse?.data?.items || [];
+    const shotTagItems = shotTagResponse?.data?.items || [];
+    const tagItems = [...moodTagItems, ...clothTagItems, ...shotTagItems];
+    
+    const uniqueTags = new Map(); // 함수 내부에서 중복 제거용으로만 임시 사용
+
+    tagItems.forEach((tag = {}) => {
+      const code = tag.code;
+      if (!code || uniqueTags.has(code)) {
+        return;
+      }
+
+      uniqueTags.set(code, {
+        value: code,
+        label: tag.tagName || code,
+      });
+    });
+
+    // 최종적으로 [{ value: '코드', label: '태그명' }, ...] 형태의 배열 저장
+    tagOptions.value = [
+      ...Array.from(uniqueTags.values()),
+    ];
+  } catch (error) {
+    console.error('태그 옵션 조회 실패:', error);
+  }
+}
+
+function getTagLabel(code) {
+  const matchedOption = tagOptions.value.find((opt) => opt.value === code);
+  return matchedOption?.label || code; // 일치하는 태그명이 없으면 원본 코드 반환
 }
 
 async function fetchSessionDetail() {
