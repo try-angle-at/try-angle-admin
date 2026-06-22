@@ -209,7 +209,7 @@
                             <div class="drow"><span class="dk">세션 ID</span><span class="dv">{{ session.id || '—' }}</span></div>
                             <div class="drow"><span class="dk">사용자</span><span class="dv">{{ session.userName || '—' }}</span></div>
                             <div class="drow"><span class="dk">플랫폼</span><span class="dv">{{ platformLabel }}</span></div>
-                            <div class="drow"><span class="dk">시작 시각</span><span class="dv">{{ session.sDate || '—' }}</span></div>
+                            <div class="drow"><span class="dk">세션 기간</span><span class="dv">{{ sessionTimeRange }}</span></div>
                             <div class="drow"><span class="dk">세션 길이</span><span class="dv">{{ sessionDuration }}</span></div>
                         </div>
 
@@ -310,22 +310,21 @@ import * as HttpHandler from '@/common/HttpHandler.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const props = defineProps({
-    sessionId: {
-        type: [Number, String],
-        required: true,
-    },
-});
-
 const emit = defineEmits([
     'show-right-btn',
     'set-page-cfg',
     'show-left-btn',
 ]);
 
-const router = useRouter();
 const route  = useRoute();
 const util   = Util.getInstance();
+
+const props = defineProps({
+    sessionId: {
+        type: [Number, String],
+        required: true,
+    },
+});
 
 const resolvedSessionId = computed(() => props.sessionId || route.params.id || route.query.id);
 
@@ -336,6 +335,8 @@ const session = ref({
     imgId: null,
     sDate: '',
     eDate: '',
+    sDateRaw: null,
+    eDateRaw: null,
     device: {
         platform: '',
         appVersion: '',
@@ -473,13 +474,26 @@ const platformLabel = computed(() => {
     return appVersion ? `${platform}  v${appVersion}` : platform;
 });
 
-const sessionDuration = computed(() => {
+const sessionTimeRange = computed(() => {
     const sDate = session.value.sDate;
     const eDate = session.value.eDate;
-    if (!sDate || !eDate) {
+    if (!sDate) return '—';
+    if (!eDate || eDate === '-') return sDate; // 종료 시간이 없을 경우 시작 시간만 노출
+    return `${sDate} ~ ${eDate}`;
+});
+
+const sessionDuration = computed(() => {
+    const sRaw = session.value.sDateRaw;
+    const eRaw = session.value.eDateRaw;
+    
+    if (!sRaw || !eRaw) {
         return '—';
     }
-    const sec = Number(eDate) - Number(sDate);
+    
+    // 타임스탬프 차이 계산 (초 단위)
+    const sec = Number(eRaw) - Number(sRaw);
+    if (sec < 0) return '—';
+    
     if (sec < 60) {
         return `${sec}초`;
     }
@@ -801,6 +815,8 @@ async function fetchSessionDetail() {
             imgId:     data.session?.imgId     ?? null,
             sDate:     util.formatUnixDateTime(data.session?.sDate),
             eDate:     util.formatUnixDateTime(data.session?.eDate),
+            sDateRaw:  data.session?.sDate, 
+            eDateRaw:  data.session?.eDate, 
             device: {
                 platform:   data.session?.device?.platform   || '',
                 appVersion: data.session?.device?.appVersion || '',

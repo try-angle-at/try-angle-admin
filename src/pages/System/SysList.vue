@@ -188,13 +188,15 @@ async function fetchListSessions() {
 
     const list = response?.data?.items || [];
     const total = response?.data?.total || 0;
-
+    
     const mappedRows = list.map((session = {}) => ({
       id: session.id ?? '-',
       userName: session.userName || '-',
       imgId: session.imgId ?? '-',
       sDate: util.formatUnixDateTime(session.sDate),
       eDate: util.formatUnixDateTime(session.eDate),
+      sDateRaw: session.sDate,
+      eDateRaw: session.eDate,
       device: formatDevice(session.device),
       sStat: session.sStat,
       cDate: util.formatUnixDateTime(session.cDate),
