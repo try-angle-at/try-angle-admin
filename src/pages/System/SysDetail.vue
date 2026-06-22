@@ -622,6 +622,22 @@ const updatePageCfg = () => {
 onMounted(() => {
     emit('show-right-btn');
     emit('show-left-btn');
+
+    // 1. LocalStorage에서 넘어온 데이터 즉시 바인딩 (UI 깜빡임 최소화)
+    const saved = localStorage.getItem('sessionDetail');
+    if (saved) {
+        try {
+            const parsedSession = JSON.parse(saved);
+            session.value = { ...session.value, ...parsedSession };
+            
+            if (session.value.imgId) {
+                fetchRefImgDetail(session.value.imgId);
+            }
+        } catch (e) {
+            console.error('localStorage 데이터 파싱 실패', e);
+        }
+    }
+
     updatePageCfg();
 
     // 상태 라벨 옵션 먼저 조회 후 세션 상세 정보 조회
@@ -805,10 +821,6 @@ async function fetchSessionDetail() {
                 canCapture: meta.canCapture ?? false,
             };
         });
-
-        if (session.value.imgId) {
-            fetchRefImgDetail(session.value.imgId);
-        }
 
         updatePageCfg();
         await nextTick();

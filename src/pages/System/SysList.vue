@@ -54,7 +54,7 @@
             <button
               type="button"
               class="link-button"
-              @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
+              @click.stop="handleClickBtn('goToDetail', item?.raw ?? item)"
             >{{ (item?.raw ?? item)?.id ?? '-' }}</button>
           </template>
 
@@ -83,7 +83,7 @@
               class="detail-btn"
               size="small"
               variant="outlined"
-              @click.stop="handleClickBtn('goToDetail', (item?.raw ?? item)?.id)"
+              @click.stop="handleClickBtn('goToDetail', item?.raw ?? item)"
             >상세보기</v-btn>
           </template>
 
@@ -263,8 +263,12 @@ function handleClickBtn(action, value) {
       fetchListSessions();
       break;
 
-    case 'goToDetail':
-      navigateTo(router, `/system/${value}`);
+case 'goToDetail':
+      // value로 넘어온 row 데이터를 localStorage에 저장합니다.
+      if (value && value.id) {
+        localStorage.setItem('sessionDetail', JSON.stringify(value));
+        navigateTo(router, `/system/${value.id}`);
+      }
       break;
 
     case 'goToRefImgDetail':
@@ -283,8 +287,8 @@ function handleRowClick({ item }) {
   if (!row?.id) {
     return;
   }
-
-  handleClickBtn('goToDetail', row.id);
+  // row 전체를 넘깁니다.
+  handleClickBtn('goToDetail', row);
 }
 
 function handlePageChange(nextPage) {
