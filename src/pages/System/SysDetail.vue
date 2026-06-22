@@ -363,6 +363,9 @@ const refImgDetail = ref({
 const isSessionLoading = ref(false);
 const isRefLoading     = ref(false);
 
+
+const statusOptions = ref([]);
+
 // ----- 스켈레톤 관련 ----- //
 const imageRef   = ref(null);
 const overlayRef = ref(null);
@@ -434,14 +437,6 @@ const availableMetrics = [
 ];
 const activeMetrics = ref(['score', 'progress']);
 
-const snapshotHeaders = [
-    { title: '#',     key: 'idx',      width: '40px'  },
-    { title: '시각',  key: 'ts',       width: '120px' },
-    { title: 'score', key: 'score'                    },
-    { title: 'category', key: 'category'              },
-    { title: 'passed',   key: 'passedLabel'           },
-]; // 참고용 — 추후 스냅샷 목록 테이블 재사용 시 활용
-
 // ----- 라이브 pose 캔버스 / 시점 선택(슬라이드) ----- //
 const liveCanvasRef = ref(null);
 const scrubIndex    = ref(0);   // 현재 선택된 snapshot index
@@ -459,12 +454,15 @@ const dialog = ref({
 });
 
 // ----- computed ----- //
+// ----- computed ----- //
 const statusLabel = computed(() => {
-    const map = { 0: '대기', 1: '진행중', 2: '완료', 9: '오류' };
-    return map[session.value.sStat] ?? '알 수 없음';
+    // API로 불러온 동적 옵션에서 현재 세션 상태와 일치하는 값을 찾음
+    const option = statusOptions.value.find(opt => opt.value === session.value.sStat);
+    return option ? option.label : '알 수 없음';
 });
 
 const statusColor = computed(() => {
+    // API 응답에 색상 정보가 없으므로 기존 하드코딩된 색상 맵핑 유지
     const map = { 0: '#6A7282', 1: '#4A5565', 2: '#364153', 9: '#E53E3E' };
     return map[session.value.sStat] ?? '#6A7282';
 });
@@ -626,7 +624,11 @@ onMounted(() => {
     emit('show-left-btn');
     updatePageCfg();
 
-    fetchSessionDetail();
+    // 상태 라벨 옵션 먼저 조회 후 세션 상세 정보 조회
+    fetchStatusLabelOption().then(() => {
+        fetchSessionDetail();
+    });
+    
     window.addEventListener('resize', drawSkeleton);
     window.addEventListener('resize', drawLiveSkeleton);
     window.addEventListener('resize', handleThreeResize);
@@ -678,6 +680,41 @@ watch(snapshots, (list) => {
 });
 
 // ----- 함수 정의 ----- //
+async function fetchStatusLabelOption() {
+  try {
+    const response = await HttpHandler.listTags({
+      page: 1,
+      parentCode: 'SYS_STAT_ROOT',
+      tagName: null,
+    });
+
+    const statusItems = response?.data?.items || [];
+    const uniqueStatusOptions = new Map();
+
+    statusItems.forEach((status = {}) => {
+      const codeSuffix = Number(String(status.code || '').split('_').pop());
+      const value = Number.isNaN(codeSuffix) ? status.code : codeSuffix;
+
+      if (value === undefined || value === null || uniqueStatusOptions.has(value)) {
+        return;
+      }
+
+      uniqueStatusOptions.set(value, {
+        value,
+        label: status.tagName || status.code || String(value),
+      });
+    });
+
+    statusOptions.value = [
+      { label: '알 수 없음', value: null }, // 상세 페이지에서 굳이 필요하지 않다면 이 줄은 삭제해도 좋습니다.
+      ...Array.from(uniqueStatusOptions.values()),
+    ];
+  } catch (error) {
+    console.error('세션 상태 옵션 조회 실패:', error);
+    statusOptions.value = [{ label: '알 수 없음', value: null }];
+  }
+}
+
 async function fetchSessionDetail() {
     if (!resolvedSessionId.value) {
         console.error('sessionId가 없어 세션 데이터를 조회할 수 없습니다.');
@@ -1658,6 +1695,7 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     inset: 0;
     pointer-events: none;
     border-radius: 8px;
+    background-color: transparent;
     background-color: transparent;
 }
 
