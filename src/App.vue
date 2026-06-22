@@ -32,10 +32,7 @@
       app color="#FFFFFF" flat
       v-if="showTopNav"
     >
-
-
       <v-row no-gutters class="justify-space-between | align-center | header-container">
-        <!-- Parent 타이틀 표시 -->
         <template v-if="!showLeftBtn">
           <v-col cols="auto" class="pl-5">
             <span class="app-title-left">{{ currentPageCfg.name }}</span>
@@ -46,12 +43,19 @@
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
-                  icon="$cus-profile"
                   variant="outlined"
-                  density="comfortable"
+                  size="40"
                   rounded="circle"
                   class="profileIcon"
-                ></v-btn>
+                >
+                  <v-img
+                    :src="userProfileUrl"
+                    alt="Profile"
+                    cover
+                    width="40"
+                    height="40"
+                  />
+                </v-btn>
               </template>
 
               <v-row
@@ -89,9 +93,7 @@
           </v-col>
         </template>
 
-        <!-- Child 타이틀 표시 -->
         <template v-else>
-          <!-- 왼쪽 버튼 영역 -->
           <v-col cols="auto" class="pl-2">
             <v-btn
               v-if="showLeftBtn"
@@ -108,13 +110,21 @@
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
-                  icon="$cus-profile"
                   variant="outlined"
-                  density="comfortable"
+                  size="40"
                   rounded="circle"
                   class="profileIcon"
-                ></v-btn>
+                >
+                  <v-img
+                    :src="userProfileUrl"
+                    alt="Profile"
+                    cover
+                    width="40"
+                    height="40"
+                  />
+                </v-btn>
               </template>
+
 
               <v-row
                 no-gutters
@@ -151,9 +161,6 @@
           </v-col>
         </template>
       </v-row>
-
-
-
     </v-app-bar>
 
     <v-main>
@@ -164,10 +171,8 @@
         @set-page-cfg="setCurrentPageCfg"
       ></router-view>
     </v-main>
-
   </v-app>
 
-  <!-- 다이얼로그 -->
   <v-dialog v-model="dialog.isActive" width="400px">
     <v-card style="padding: 24px 16px; border-radius: 24px;">
       <v-btn 
@@ -192,32 +197,30 @@
       </v-card-text>
 
       <template v-slot:actions>
-          <v-btn class="active-thin-btn" style="border-radius: 16px;" variant="outlined" @click="dialog.okButton" :loading="isSubmitting">{{ dialog.okText }}</v-btn>
+          <v-btn class="active-thin-btn" style="border-radius: 16px;" variant="outlined" @click="dialog.okButton">{{ dialog.okText }}</v-btn>
       </template>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-// ----- 선언부 ----- //
 import { onMounted, ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { navigateTo, goBack } from '@/common/RouterUtil.js';
 import SideNavItem from '@/components/SideNavItem.vue';
 
-// 라우터 인스턴스 가져오기
 const router = useRouter();
-const route = useRoute(); // (추가) 현재 라우트 정보 가져오기
+const route = useRoute();
 
-// 네비게이션 표시 상태
 const showTopNav = ref(true);
 const showSideNav = ref(true);
 const currentPageCfgOverride = ref(null);
-
 const showLeftBtn = ref(false);
 const publicPages = ['/login', '/register'];
 
-// 페이지별 네비게이션 설정
+// 반응형 유저 데이터 상태 관리
+const userInfo = ref(null);
+
 const pageList = ref([
   {
     name: '개발자 도구',
@@ -292,6 +295,18 @@ const shouldShowSideNav = computed(() => {
   return showSideNav.value && !publicPages.includes(route.path) && pageList.value.length > 0;
 });
 
+// 유저 프로필 이미지 URL 계산 (서버 Base URL 환경변수와 결합 필요)
+const userProfileUrl = computed(() => {
+  const baseUrl = import.meta.env.VITE_IMAGE_BASE_URL || '';
+  const defaultUrl = `${baseUrl}/profiles/default.png`;
+
+  if (!userInfo.value || !userInfo.value.filePath) return defaultUrl;
+  
+  return userInfo.value.filePath.startsWith('http') 
+    ? userInfo.value.filePath 
+    : `${baseUrl}/${userInfo.value.filePath}`;
+});
+
 const dialog = ref({
   title: '',
   text: '',
@@ -307,19 +322,35 @@ onMounted(() => {
   console.log(import.meta.env)
   
   checkLogin();
+  loadUserInfo(); // 컴포넌트 마운트 시 유저 정보 로드
 });
 
 watch(
-  () => route.path, // 현재 경로(path)를 감시
+  () => route.path,
   () => {
     showTopNav.value = true;
     showSideNav.value = true;
     showLeftBtn.value = false;
     currentPageCfgOverride.value = null;
+    loadUserInfo(); // 라우트가 변경될 때 최신 상태 반영을 위해 로드
   }
 );
 
 // ----- 함수 정의 ----- //
+// localStorage에서 유저 정보 파싱 함수
+function loadUserInfo() {
+  const user = localStorage.getItem('user');
+  if (user) {
+    try {
+      userInfo.value = JSON.parse(user);
+    } catch (e) {
+      console.error('유저 정보 파싱 에러:', e);
+      userInfo.value = null;
+    }
+  } else {
+    userInfo.value = null;
+  }
+}
 
 // 로그인 체크
 function checkLogin() {
@@ -416,7 +447,9 @@ function handleClickBtn(action) {
         '정말 로그아웃 하시겠습니까?',
         () => {
           dialog.value.isActive = false;
-          logout();
+          localStorage.removeItem('user'); // 로그아웃 시 클리어
+          localStorage.removeItem('accessToken');
+          userInfo.value = null;
           navigateTo(router, '/login');
         },
         false,
@@ -445,7 +478,6 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
   dialog.value.isOneBtn = isOneBtn || false;
   dialog.value.okText = okText || '확인';
 }
-
 </script>
 
 <style scoped>
@@ -478,8 +510,8 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 .profileIcon {
   background-color: #F3F4F6;
-  color: #364153;
   border: 0px;
+  overflow: hidden; 
 }
 
 .floating-btn {
