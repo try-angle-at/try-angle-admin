@@ -97,10 +97,14 @@ class HttpClient {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     
+    const baseHeaders = (options.headers && !('Content-Type' in options.headers))
+      ? (() => { const h = { ...this.defaultHeaders }; delete h['Content-Type']; return h; })()
+      : this.defaultHeaders;
+
     const config = {
       ...options,
       headers: {
-        ...this.defaultHeaders,
+        ...baseHeaders,
         ...options.headers,
       },
     };
