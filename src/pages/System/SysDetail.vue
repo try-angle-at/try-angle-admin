@@ -61,199 +61,155 @@
 </v-col>
 
             <!-- 중앙 + 우측 메인 영역 -->
-            <v-col cols="9" class="d-flex | flex-column" style="overflow: hidden;">
+<v-col cols="9" class="d-flex | flex-column" style="overflow: hidden;">
 
-                <!-- 상단 헤더 -->
-                <v-row no-gutters class="align-item-center | justify-end" style="max-height: 60px; height: 60px; border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
-                    <v-chip
-                        :color="statusColor"
-                        variant="tonal"
-                        size="small"
-                        class="mr-3"
-                    >{{ statusLabel }}</v-chip>
-                    <v-btn
-                        @click="fetchSessionDetail"
-                        variant="outlined"
-                        class="thin-btn | outline-grey | btn-width | mr-2"
-                    >새로고침</v-btn>
-                </v-row>
+    <v-row no-gutters class="align-item-center | justify-end" style="max-height: 60px; height: 60px; border-bottom: 1px solid #E5E8EB; flex-shrink: 0;">
+        <v-chip
+            :color="statusColor"
+            variant="tonal"
+            size="small"
+            class="mr-3"
+        >{{ statusLabel }}</v-chip>
+        <v-btn
+            @click="fetchSessionDetail"
+            variant="outlined"
+            class="thin-btn | outline-grey | btn-width | mr-2"
+        >새로고침</v-btn>
+    </v-row>
 
-                <!-- 로딩 -->
-                <v-row v-if="isSessionLoading" no-gutters class="align-center | justify-center | flex-grow-1">
-                    <v-progress-circular indeterminate color="#6A7282" />
-                </v-row>
+    <v-row no-gutters class="flex-grow-1" style="min-height: 0; overflow: hidden;">
 
-                <!-- 스냅샷 없음 -->
-                <v-row v-else-if="!snapshots.length" no-gutters class="flex-column | align-center | justify-center | flex-grow-1">
-                    <v-icon size="40" color="#4A5565">mdi-chart-line-variant</v-icon>
-                    <span class="info-text mt-2">스냅샷 데이터가 없습니다</span>
-                </v-row>
+        <v-col cols="8" class="d-flex | flex-column central-panel" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
+            
+            <v-row v-if="isSessionLoading" no-gutters class="align-center | justify-center | flex-grow-1">
+                <v-progress-circular indeterminate color="#6A7282" />
+            </v-row>
 
-                <!-- 본문: 중앙(라이브 pose 캔버스 + 차트) / 우측(메트릭 패널) -->
-                <v-row v-else no-gutters class="flex-grow-1" style="min-height: 0; overflow: hidden;">
+            <v-row v-else-if="!snapshots.length" no-gutters class="flex-column | align-center | justify-center | flex-grow-1">
+                <v-icon size="40" color="#4A5565">mdi-chart-line-variant</v-icon>
+                <span class="info-text mt-2">스냅샷 데이터가 없습니다</span>
+            </v-row>
 
-                    <!-- 중앙: 실시간 pose 캔버스 + 타임라인 차트 -->
-                    <v-col cols="8" class="d-flex | flex-column central-panel" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
-                        <!-- 캔버스 -->
-                        <div class="pose-stage-wrapper px-3 pb-3" style="min-height: 0;">
-                            <div class="pose-stage">
-                                <div class="pose-stage-inner">
-                                    <!-- Three.js 마운트 포인트 (항상 DOM에 존재, 탭으로 가려짐) -->
-                                    <div ref="threeContainerRef" class="three-stage" v-show="liveTab === '3D'" />
-
-                                    <canvas v-show="liveTab === '2D'" ref="liveCanvasRef" class="live-pose-canvas" />
-                                    <div v-if="liveTab === '2D' && !currentSnapshotHasPose" class="pose-empty-overlay">
-                                        <v-icon size="28" color="#9AA3AF">mdi-account-question-outline</v-icon>
-                                        <span class="info-text mt-1">키포인트 없음</span>
-                                    </div>
-                                </div>
-
-                                <!-- 탭 전환 버튼 (2D / 3D) -->
-                                <div class="tab-bar">
-                                    <button
-                                        v-for="tab in ['3D', '2D']"
-                                        :key="tab"
-                                        :class="['tab-btn', { active: liveTab === tab }]"
-                                        @click="switchLiveTab(tab)"
-                                    >{{ tab }}</button>
-                                </div>
-
-                                <!-- HUD: 현재 프레임 카메라 정보 -->
-                                <div class="pose-hud | pose-hud-tl">
-                                    <div class="pose-hud-label">FRAME</div>
-                                    <div class="pose-hud-main">#{{ currentSnapshot?.fseq ?? '—' }}</div>
-                                    <div class="pose-hud-sub">{{ currentFrameTime }}</div>
-                                </div>
-                                <div class="pose-hud | pose-hud-tr">
-                                    <v-row no-gutters class="align-item-center" style="gap: 4px; flex-wrap: wrap;">
-                                        <v-chip
-                                            v-for="grp in skeletonGroups"
-                                            :key="grp.key"
-                                            size="x-small"
-                                            variant="outlined"
-                                            :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
-                                        >{{ grp.label }}</v-chip>
-                                    </v-row>
-                                </div>
-                                <div class="pose-hud | pose-hud-bl">
-                                    <div class="pose-hud-row"><span>phase</span><strong>{{ currentSnapshot?.category || '—' }}</strong></div>
-                                    <div class="pose-hud-row"><span>gate</span><strong>G{{ currentSnapshot?.gate ?? '—' }}</strong></div>
-                                </div>
-                                <div v-if="currentSnapshot?.feedback" class="pose-feedback">{{ currentSnapshot.feedback }}</div>
+            <template v-else>
+                <div class="pose-stage-wrapper px-3 pb-3" style="min-height: 0;">
+                    <div class="pose-stage">
+                        <div class="pose-stage-inner">
+                            <div ref="threeContainerRef" class="three-stage" v-show="liveTab === '3D'" />
+                            <canvas v-show="liveTab === '2D'" ref="liveCanvasRef" class="live-pose-canvas" />
+                            <div v-if="liveTab === '2D' && !currentSnapshotHasPose" class="pose-empty-overlay">
+                                <v-icon size="28" color="#9AA3AF">mdi-account-question-outline</v-icon>
+                                <span class="info-text mt-1">키포인트 없음</span>
                             </div>
                         </div>
-
-                        <!-- 슬라이더: 시점 선택 -->
-                        <div class="pose-controls px-3 pb-3" style="flex-shrink: 0;">
-                            <v-row no-gutters class="align-item-center |" style="gap: 10px;">
-                                <v-btn
-                                    icon
-                                    size="small"
-                                    variant="outlined"
-                                    class="play-btn"
-                                    :class="{ 'play-btn--on': isPlaying }"
-                                    @click="togglePlay"
-                                >
-                                    <v-icon size="16">{{ isPlaying ? 'mdi-pause' : 'mdi-play' }}</v-icon>
-                                </v-btn>
-                                <v-slider
-                                    v-model="scrubIndex"
-                                    :min="0"
-                                    :max="Math.max(0, snapshots.length - 1)"
-                                    :step="1"
-                                    hide-details
-                                    color="#364153"
-                                    track-color="#E5E8EB"
-                                    thumb-size="12"
-                                    density="compact"
-                                    class="scrub-slider"
-                                    @update:model-value="onScrub"
-                                    @start="isPlaying = false"
-                                />
-                                <span class="info-text scrub-count">{{ scrubIndex + 1 }} / {{ snapshots.length }}</span>
-                            </v-row>
+                        <div class="tab-bar">
+                            <button
+                                v-for="tab in ['3D', '2D']"
+                                :key="tab"
+                                :class="['tab-btn', { active: liveTab === tab }]"
+                                @click="switchLiveTab(tab)"
+                            >{{ tab }}</button>
                         </div>
-
-                        <!-- 하단: score 추이 차트 -->
-                        <div class="chart-section px-5 pb-4" style="flex-shrink: 0;">
-                            <div class="chart-header align-item-center | justify-space-between | mb-2" style="max-height: 60px;">
-                                <v-row no-gutters class="align-item-center">
-                                    <v-icon size="15" color="#6A7282" class="mr-1">mdi-chart-line</v-icon>
-                                    <span class="info-text">실시간 AI 분석 추이</span>
-                                </v-row>
-                                <v-row no-gutters cols="auto" style="gap: 6px;">
-                                    <v-btn
-                                        v-for="metric in availableMetrics"
-                                        :key="metric.key"
-                                        size="x-small"
-                                        :variant="activeMetrics.includes(metric.key) ? 'outlined' : 'text'"
-                                        class="small-btn"
-                                        :class="activeMetrics.includes(metric.key) ? 'outline-grey' : ''"
-                                        @click="toggleMetric(metric.key)"
-                                    >{{ metric.label }}</v-btn>
-                                </v-row>
-                            </div>
-                            <div class="chart-wrap chart-fill">
-                                <canvas ref="chartCanvas" />
-                            </div>
+                        <div class="pose-hud | pose-hud-tl">
+                            <div class="pose-hud-label">FRAME</div>
+                            <div class="pose-hud-main">#{{ currentSnapshot?.fseq ?? '—' }}</div>
+                            <div class="pose-hud-sub">{{ currentFrameTime }}</div>
                         </div>
-                    </v-col>
-
-                    <!-- 우측: 메트릭 패널 -->
-                    <v-col cols="4" class="d-flex | flex-column | metric-panel" style="overflow-y: auto; scrollbar-width: thin;">
-
-                        <!-- 세션 정보 -->
-                         
-                        <div class="rsec">
-                            <div class="rsh">세션 정보</div>
-                            <div class="drow"><span class="dk">세션 ID</span><span class="dv">{{ session.id || '—' }}</span></div>
-                            <div class="drow"><span class="dk">사용자</span><span class="dv">{{ session.userName || '—' }}</span></div>
-                            <div class="drow"><span class="dk">플랫폼</span><span class="dv">{{ platformLabel }}</span></div>
-                            <div class="drow"><span class="dk">세션 기간</span><span class="dv">{{ sessionTimeRange }}</span></div>
-                            <div class="drow"><span class="dk">세션 길이</span><span class="dv">{{ sessionDuration }}</span></div>
-                        </div>
-
-                        <!-- 현재 시점 AI 결과 -->
-                        <div class="rsec">
-                            <div class="rsh">AI 판정 결과 (현재 시점)</div>
-                            <v-row no-gutters class="align-item-center | justify-space-between | mb-2">
-                                <span class="metric-score-num" :style="{ color: scoreColor(currentSnapshot?.score) }">{{ currentSnapshot?.score ?? '—' }}</span>
+                        <div class="pose-hud | pose-hud-tr">
+                            <v-row no-gutters class="align-item-center" style="gap: 4px; flex-wrap: wrap;">
                                 <v-chip
+                                    v-for="grp in skeletonGroups"
+                                    :key="grp.key"
                                     size="x-small"
-                                    :color="currentSnapshot?.passed ? '#16A34A' : '#9AA3AF'"
-                                    variant="tonal"
-                                >{{ currentSnapshot?.passed ? 'PASSED' : 'NOT PASSED' }}</v-chip>
+                                    variant="outlined"
+                                    :style="{ borderColor: grp.color, color: grp.color, fontSize: '10px' }"
+                                >{{ grp.label }}</v-chip>
                             </v-row>
-                            <div class="drow"><span class="dk">category</span><span class="dv">{{ currentSnapshot?.category || '—' }}</span></div>
-                            <div class="drow"><span class="dk">progress</span><span class="dv">{{ currentProgressPct }}</span></div>
-                            <div class="drow"><span class="dk">action</span><span class="dv">{{ currentSnapshot?.action || '—' }}</span></div>
-                            <div class="drow"><span class="dk">axis</span><span class="dv">{{ currentSnapshot?.axis || '—' }}</span></div>
                         </div>
+                        <div class="pose-hud | pose-hud-bl">
+                            <div class="pose-hud-row"><span>phase</span><strong>{{ currentSnapshot?.category || '—' }}</strong></div>
+                            <div class="pose-hud-row"><span>gate</span><strong>G{{ currentSnapshot?.gate ?? '—' }}</strong></div>
+                        </div>
+                        <div v-if="currentSnapshot?.feedback" class="pose-feedback">{{ currentSnapshot.feedback }}</div>
+                    </div>
+                </div>
 
-                        <!-- 카메라 / 자세 정보 -->
-                        <div class="rsec">
-                            <div class="rsh">카메라 · 자세 정보</div>
-                            <div class="drow"><span class="dk">orientation</span><span class="dv">{{ currentSnapshot?.orientation || '—' }}</span></div>
-                            <div class="drow"><span class="dk">head state</span><span class="dv">{{ currentSnapshot?.headState || '—' }}</span></div>
-                            <div class="drow"><span class="dk">pitch</span><span class="dv">{{ fmt(currentSnapshot?.pitchDeg, 1) }}°</span></div>
-                            <div class="drow"><span class="dk">roll</span><span class="dv">{{ fmt(currentSnapshot?.rollDeg, 1) }}°</span></div>
-                            <div class="drow"><span class="dk">zoom</span><span class="dv">{{ fmt(currentSnapshot?.zoomFactor, 2) }}x</span></div>
-                            <div class="drow"><span class="dk">focal (35mm eq)</span><span class="dv">{{ fmt(currentSnapshot?.focalMm35eq, 1) }}mm</span></div>
-                            <div class="drow"><span class="dk">aspect ratio</span><span class="dv">{{ currentSnapshot?.aspectRatio || '—' }}</span></div>
-                            <div class="drow"><span class="dk">torso distance</span><span class="dv">{{ fmt(currentSnapshot?.torsoDistM, 2) }}m</span></div>
-                            <div class="drow"><span class="dk">body height frac</span><span class="dv">{{ fmt(currentSnapshot?.bodyHeightFrac, 2) }}</span></div>
-                            <div class="drow"><span class="dk">face visible kp</span><span class="dv">{{ currentSnapshot?.faceVis ?? '—' }}/68</span></div>
-                        </div>
+                <div class="pose-controls px-3 pb-3" style="flex-shrink: 0;">
+                    <v-row no-gutters class="align-item-center" style="gap: 10px;">
+                        <v-btn icon size="small" variant="outlined" class="play-btn" :class="{ 'play-btn--on': isPlaying }" @click="togglePlay">
+                            <v-icon size="16">{{ isPlaying ? 'mdi-pause' : 'mdi-play' }}</v-icon>
+                        </v-btn>
+                        <v-slider v-model="scrubIndex" :min="0" :max="Math.max(0, snapshots.length - 1)" :step="1" hide-details color="#364153" track-color="#E5E8EB" thumb-size="12" density="compact" class="scrub-slider" @update:model-value="onScrub" @start="isPlaying = false" />
+                        <span class="info-text scrub-count">{{ scrubIndex + 1 }} / {{ snapshots.length }}</span>
+                    </v-row>
+                </div>
+                <div class="chart-section px-5 pb-4" style="flex-shrink: 0;">
+                    <div class="chart-header align-item-center | justify-space-between | mb-2" style="max-height: 60px;">
+                        <v-row no-gutters class="align-item-center">
+                            <v-icon size="15" color="#6A7282" class="mr-1">mdi-chart-line</v-icon>
+                            <span class="info-text">실시간 AI 분석 추이</span>
+                        </v-row>
+                        <v-row no-gutters cols="auto" style="gap: 6px;">
+                            <v-btn
+                                v-for="metric in availableMetrics"
+                                :key="metric.key"
+                                size="x-small"
+                                :variant="activeMetrics.includes(metric.key) ? 'outlined' : 'text'"
+                                class="small-btn"
+                                :class="activeMetrics.includes(metric.key) ? 'outline-grey' : ''"
+                                @click="toggleMetric(metric.key)"
+                            >{{ metric.label }}</v-btn>
+                        </v-row>
+                    </div> <div class="chart-wrap chart-fill">
+                        <canvas ref="chartCanvas" />
+                    </div>
+                </div>
+            </template>
+        </v-col>
 
-                        <!-- 피드백 메시지 / reason -->
-                        <div class="rsec">
-                            <div class="rsh">피드백</div>
-                            <div class="feedback-box">{{ currentSnapshot?.feedback || '피드백 없음' }}</div>
-                            <div v-if="currentSnapshot?.reason" class="reason-box">{{ currentSnapshot.reason }}</div>
-                        </div>
-                    </v-col>
+        <v-col cols="4" class="d-flex | flex-column | metric-panel" style="overflow-y: auto; scrollbar-width: thin;">
+            <div class="rsec">
+                <div class="rsh">세션 정보</div>
+                <div class="drow"><span class="dk">세션 ID</span><span class="dv">{{ session.id || '—' }}</span></div>
+                <div class="drow"><span class="dk">사용자</span><span class="dv">{{ session.userName || '—' }}</span></div>
+                <div class="drow"><span class="dk">플랫폼</span><span class="dv">{{ platformLabel }}</span></div>
+                <div class="drow"><span class="dk">세션 기간</span><span class="dv">{{ sessionTimeRange }}</span></div>
+                <div class="drow"><span class="dk">세션 길이</span><span class="dv">{{ sessionDuration }}</span></div>
+            </div>
+
+            <div class="rsec">
+                <div class="rsh">AI 판정 결과 (현재 시점)</div>
+                <v-row no-gutters class="align-item-center | justify-space-between | mb-2">
+                    <span class="metric-score-num" :style="{ color: scoreColor(currentSnapshot?.score) }">{{ currentSnapshot?.score ?? '—' }}</span>
+                    <v-chip size="x-small" :color="currentSnapshot?.passed ? '#16A34A' : '#9AA3AF'" variant="tonal">{{ currentSnapshot?.passed ? 'PASSED' : 'NOT PASSED' }}</v-chip>
                 </v-row>
-            </v-col>
+                <div class="drow"><span class="dk">category</span><span class="dv">{{ currentSnapshot?.category || '—' }}</span></div>
+                <div class="drow"><span class="dk">progress</span><span class="dv">{{ currentProgressPct }}</span></div>
+                <div class="drow"><span class="dk">action</span><span class="dv">{{ currentSnapshot?.action || '—' }}</span></div>
+                <div class="drow"><span class="dk">axis</span><span class="dv">{{ currentSnapshot?.axis || '—' }}</span></div>
+            </div>
+
+            <div class="rsec">
+                <div class="rsh">카메라 · 자세 정보</div>
+                <div class="drow"><span class="dk">orientation</span><span class="dv">{{ currentSnapshot?.orientation || '—' }}</span></div>
+                <div class="drow"><span class="dk">head state</span><span class="dv">{{ currentSnapshot?.headState || '—' }}</span></div>
+                <div class="drow"><span class="dk">pitch</span><span class="dv">{{ fmt(currentSnapshot?.pitchDeg, 1) }}°</span></div>
+                <div class="drow"><span class="dk">roll</span><span class="dv">{{ fmt(currentSnapshot?.rollDeg, 1) }}°</span></div>
+                <div class="drow"><span class="dk">zoom</span><span class="dv">{{ fmt(currentSnapshot?.zoomFactor, 2) }}x</span></div>
+                <div class="drow"><span class="dk">focal (35mm eq)</span><span class="dv">{{ fmt(currentSnapshot?.focalMm35eq, 1) }}mm</span></div>
+                <div class="drow"><span class="dk">aspect ratio</span><span class="dv">{{ currentSnapshot?.aspectRatio || '—' }}</span></div>
+                <div class="drow"><span class="dk">torso distance</span><span class="dv">{{ fmt(currentSnapshot?.torsoDistM, 2) }}m</span></div>
+                <div class="drow"><span class="dk">body height frac</span><span class="dv">{{ fmt(currentSnapshot?.bodyHeightFrac, 2) }}</span></div>
+                <div class="drow"><span class="dk">face visible kp</span><span class="dv">{{ currentSnapshot?.faceVis ?? '—' }}/68</span></div>
+            </div>
+
+            <div class="rsec">
+                <div class="rsh">피드백</div>
+                <div class="feedback-box">{{ currentSnapshot?.feedback || '피드백 없음' }}</div>
+                <div v-if="currentSnapshot?.reason" class="reason-box">{{ currentSnapshot.reason }}</div>
+            </div>
+        </v-col>
+    </v-row>
+</v-col>
         </v-row>
     </v-container>
 
