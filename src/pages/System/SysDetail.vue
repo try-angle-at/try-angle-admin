@@ -77,7 +77,7 @@
         >새로고침</v-btn>
     </v-row>
 
-    <v-row no-gutters class="flex-grow-1" style="min-height: 0; overflow: hidden;">
+    <v-row no-gutters class="flex-grow-1 content-row" style="min-height: 0; overflow: hidden; flex-wrap: nowrap;">
 
         <v-col cols="8" class="d-flex | flex-column central-panel" style="border-right: 1px solid #E5E8EB; overflow: hidden;">
             
@@ -179,13 +179,22 @@
             </template>
         </v-col>
 
-        <v-col cols="4" class="d-flex | flex-column | metric-panel" style="overflow-y: auto; scrollbar-width: thin;">
+        <v-col cols="4" class="d-flex | flex-column | metric-panel" style="overflow-y: auto; scrollbar-width: thin; min-height: 0; max-height: 100%;">
             <div class="rsec">
                 <div class="rsh">세션 정보</div>
                 <div class="drow"><span class="dk">세션 ID</span><span class="dv">{{ session.id || '—' }}</span></div>
                 <div class="drow"><span class="dk">사용자</span><span class="dv">{{ session.userName || '—' }}</span></div>
                 <div class="drow"><span class="dk">플랫폼</span><span class="dv">{{ platformLabel }}</span></div>
-                <div class="drow"><span class="dk">세션 기간</span><span class="dv">{{ sessionTimeRange }}</span></div>
+                <div class="session-time-grid">
+                    <div class="session-time-item">
+                        <span class="dk">세션 시작</span>
+                        <span class="dv">{{ session.sDate || '—' }}</span>
+                    </div>
+                    <div class="session-time-item">
+                        <span class="dk">세션 종료</span>
+                        <span class="dv">{{ session.eDate || '—'}}</span>
+                    </div>
+                </div>
                 <div class="drow"><span class="dk">세션 길이</span><span class="dv">{{ sessionDuration }}</span></div>
             </div>
 
@@ -195,24 +204,26 @@
                     <span class="metric-score-num" :style="{ color: scoreColor(currentScorePct) }">{{ currentScorePct ?? '—' }}</span>
                     <v-chip size="x-small" :color="currentSnapshot?.passed ? '#16A34A' : '#9AA3AF'" variant="tonal">{{ currentSnapshot?.passed ? 'PASSED' : 'NOT PASSED' }}</v-chip>
                 </v-row>
-                <div class="drow"><span class="dk">category</span><span class="dv">{{ currentSnapshot?.category || '—' }}</span></div>
-                <div class="drow"><span class="dk">progress</span><span class="dv">{{ currentProgressPct }}</span></div>
-                <div class="drow"><span class="dk">action</span><span class="dv">{{ currentSnapshot?.action || '—' }}</span></div>
-                <div class="drow"><span class="dk">axis</span><span class="dv">{{ currentSnapshot?.axis || '—' }}</span></div>
+                <div class="drow"><span class="dk">카테고리</span><span class="dv">{{ currentSnapshot?.category || '—' }}</span></div>
+                <div class="drow"><span class="dk">진행률</span><span class="dv">{{ currentProgressPct }}</span></div>
+                <div class="drow"><span class="dk">동작</span><span class="dv">{{ currentSnapshot?.action || '—' }}</span></div>
+                <div class="drow"><span class="dk">축</span><span class="dv">{{ currentSnapshot?.axis || '—' }}</span></div>
             </div>
 
             <div class="rsec">
                 <div class="rsh">카메라 · 자세 정보</div>
-                <div class="drow"><span class="dk">orientation</span><span class="dv">{{ currentSnapshot?.orientation || '—' }}</span></div>
-                <div class="drow"><span class="dk">head state</span><span class="dv">{{ currentSnapshot?.headState || '—' }}</span></div>
-                <div class="drow"><span class="dk">pitch</span><span class="dv">{{ fmt(currentSnapshot?.pitchDeg, 1) }}°</span></div>
-                <div class="drow"><span class="dk">roll</span><span class="dv">{{ fmt(currentSnapshot?.rollDeg, 1) }}°</span></div>
-                <div class="drow"><span class="dk">zoom</span><span class="dv">{{ fmt(currentSnapshot?.zoomFactor, 2) }}x</span></div>
-                <div class="drow"><span class="dk">focal (35mm eq)</span><span class="dv">{{ fmt(currentSnapshot?.focalMm35eq, 1) }}mm</span></div>
-                <div class="drow"><span class="dk">aspect ratio</span><span class="dv">{{ currentSnapshot?.aspectRatio || '—' }}</span></div>
-                <div class="drow"><span class="dk">torso distance</span><span class="dv">{{ fmt(currentSnapshot?.torsoDistM, 2) }}m</span></div>
-                <div class="drow"><span class="dk">body height frac</span><span class="dv">{{ fmt(currentSnapshot?.bodyHeightFrac, 2) }}</span></div>
-                <div class="drow"><span class="dk">face visible kp</span><span class="dv">{{ currentSnapshot?.faceVis ?? '—' }}/68</span></div>
+                <div class="camera-info-grid">
+                    <div class="drow"><span class="dk">orientation</span><span class="dv">{{ currentSnapshot?.orientation || '—' }}</span></div>
+                    <div class="drow"><span class="dk">head state</span><span class="dv">{{ currentSnapshot?.headState || '—' }}</span></div>
+                    <div class="drow"><span class="dk">pitch</span><span class="dv">{{ fmt(currentSnapshot?.pitchDeg, 1) }}°</span></div>
+                    <div class="drow"><span class="dk">roll</span><span class="dv">{{ fmt(currentSnapshot?.rollDeg, 1) }}°</span></div>
+                    <div class="drow"><span class="dk">zoom</span><span class="dv">{{ fmt(currentSnapshot?.zoomFactor, 2) }}x</span></div>
+                    <div class="drow"><span class="dk">focal (35mm eq)</span><span class="dv">{{ fmt(currentSnapshot?.focalMm35eq, 1) }}mm</span></div>
+                    <div class="drow"><span class="dk">aspect ratio</span><span class="dv">{{ currentSnapshot?.aspectRatio || '—' }}</span></div>
+                    <div class="drow"><span class="dk">torso distance</span><span class="dv">{{ fmt(currentSnapshot?.torsoDistM, 2) }}m</span></div>
+                    <div class="drow"><span class="dk">body height frac</span><span class="dv">{{ fmt(currentSnapshot?.bodyHeightFrac, 2) }}</span></div>
+                    <div class="drow"><span class="dk">face visible kp</span><span class="dv">{{ currentSnapshot?.faceVis ?? '—' }}/68</span></div>
+                </div>
             </div>
 
             <div class="rsec">
@@ -236,8 +247,22 @@
                 </v-row>
                 
                 <v-expand-transition>
-                    <div v-show="isRawDataOpen" class="raw-data-box">
-                        <pre>{{ forCurSnapshot }}</pre>
+                    <div v-show="isRawDataOpen" class="raw-data-box" ref="rawDataBoxRef">
+                        <div class="raw-search-wrap | mb-2">
+                            <input
+                                v-model="rawKeyword"
+                                type="text"
+                                class="raw-search-input"
+                                placeholder="키워드 검색 (예: score, bbox, pitch)"
+                            />
+                        </div>
+                        <textarea
+                            ref="rawTextareaRef"
+                            class="raw-data-textarea"
+                            :value="forCurSnapshot"
+                            readonly
+                            spellcheck="false"
+                        />
                     </div>
                 </v-expand-transition>
             </div>
@@ -354,6 +379,9 @@ const refImgDetail = ref({
 const isSessionLoading = ref(false);
 const isRefLoading     = ref(false);
 const isRawDataOpen = ref(false);
+const rawKeyword = ref('');
+const rawDataBoxRef = ref(null);
+const rawTextareaRef = ref(null);
 
 
 const statusOptions = ref([]);
@@ -489,9 +517,56 @@ const sessionDuration = computed(() => {
 });
 
 const forCurSnapshot = computed(() => {
-    if (!currentSnapshot.value) return '데이터 없음';
-    // JSON 객체를 읽기 쉽게 포맷팅 (들여쓰기 2칸)
-    return JSON.stringify(currentSnapshot.value, null, 2);
+    const snap = currentSnapshot.value;
+    if (!snap) return '데이터 없음';
+
+    const shortText = (value, maxLen = 36) => {
+        if (value == null || value === '') return null;
+        const text = String(value);
+        return text.length > maxLen ? `${text.slice(0, maxLen)}... (${text.length})` : text;
+    };
+
+    const compact = {
+        frame: {
+            fseq: snap.fseq,
+            ts: snap.ts,
+            offsetMs: snap.offsetMs,
+            gate: snap.gate,
+            phase: snap.phase,
+            pidx: snap.pidx,
+        },
+        ai: {
+            scorePct: snap.score == null ? null : Math.round(Number(snap.score) * 100),
+            progressPct: snap.progress == null ? null : Math.round(Number(snap.progress) * 100),
+            passed: snap.passed,
+            category: snap.category,
+            action: snap.action,
+            axis: snap.axis,
+            stuckSec: snap.stuckSec,
+            canCapture: snap.canCapture,
+            feedback: shortText(snap.feedback, 80),
+            reason: shortText(snap.reason, 80),
+        },
+        camera: {
+            orientation: snap.orientation,
+            headState: snap.headState,
+            pitchDeg: snap.pitchDeg,
+            rollDeg: snap.rollDeg,
+            zoomFactor: snap.zoomFactor,
+            focalMm35eq: snap.focalMm35eq,
+            torsoDistM: snap.torsoDistM,
+            bodyHeightFrac: snap.bodyHeightFrac,
+            faceVis: snap.faceVis,
+            aspectRatio: snap.aspectRatio,
+        },
+        poseHex: {
+            bboxHex: shortText(snap.bboxHex, 24),
+            kpHexLen: snap.kpHex ? String(snap.kpHex).length : 0,
+            pvHexLen: snap.pvHex ? String(snap.pvHex).length : 0,
+        },
+    };
+
+    return JSON.stringify(compact, null, 2);
 });
 
 // aiDoc → 키포인트 파싱 (RefImgAiDocs 동일 로직)
@@ -696,6 +771,31 @@ watch(snapshots, (list) => {
             drawLiveSkeleton();
         }
     });
+});
+
+watch([rawKeyword, isRawDataOpen, currentSnapshot], async () => {
+    const keyword = rawKeyword.value.trim();
+    if (!isRawDataOpen.value || !keyword) {
+        return;
+    }
+
+    await nextTick();
+    const textarea = rawTextareaRef.value;
+    if (!textarea) {
+        return;
+    }
+
+    const rawText = forCurSnapshot.value;
+    const loweredText = rawText.toLowerCase();
+    const loweredKeyword = keyword.toLowerCase();
+    const firstIndex = loweredText.indexOf(loweredKeyword);
+
+    if (firstIndex >= 0) {
+        const endIndex = firstIndex + keyword.length;
+        textarea.focus();
+        textarea.setSelectionRange(firstIndex, endIndex);
+        textarea.blur();
+    }
 });
 
 // ----- 함수 정의 ----- //
@@ -1848,6 +1948,11 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    max-height: 100%;
+}
+
+.content-row {
+    align-items: stretch;
 }
 
 .pose-stage-wrapper {
@@ -2028,6 +2133,9 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 /* ── 우측 메트릭 패널 ── */
 .metric-panel {
     background-color: #F3F4F6;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
 }
 
 .metric-panel .rsec {
@@ -2063,6 +2171,30 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     margin-bottom: 0;
 }
 
+.camera-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+}
+
+.camera-info-grid .drow {
+    margin-bottom: 0;
+}
+
+.session-time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    margin-bottom: 6px;
+}
+
+.session-time-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
 .dk {
     font-size: 11px;
     color: #6A7282;
@@ -2094,6 +2226,47 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     font-family: ui-monospace, monospace;
     line-height: 1.5;
     word-break: break-all;
+}
+
+.raw-search-wrap {
+    width: 100%;
+}
+
+.raw-search-input {
+    width: 100%;
+    border: 0.7px solid #D1D5DB;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #364153;
+    background: #ffffff;
+}
+
+.raw-search-input:focus {
+    border-color: #4A5565;
+    outline: none;
+}
+
+.raw-data-textarea {
+    width: 100%;
+    min-height: 220px;
+    max-height: 360px;
+    resize: vertical;
+    padding: 8px 10px;
+    border: 0.7px solid #E5E8EB;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #364153;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.35;
+    white-space: pre;
+    overflow: auto;
+}
+
+.raw-data-textarea:focus {
+    outline: none;
+    border-color: #4A5565;
 }
 
 .score-bar {
