@@ -617,7 +617,7 @@ export async function listSessions(params = {}) {
     canCapture: params.canCapture ?? null,
   });
  
-  return request('POST', '/api/session/list', {
+  return request('POST', '/session/list', {
     body: compact({
       page: params.page,
       limit: params.limit,

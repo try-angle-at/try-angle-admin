@@ -198,8 +198,16 @@ const isLoading = ref(false);
 const statusItems = ref([
   { label: '전체 상태', value: null },
 ]);
-const canCapItems = ref([]);
-const categoryItems = ref([]);
+const canCapItems = ref([
+  { label: '전체', value: null },
+  { label: '가능', value: 'true' },
+  { label: '불가', value: 'false' },
+]);
+const categoryItems = ref([
+  { label: '전체 단계', value: null },
+  { label: 'person', value: 'person' },
+  { label: 'framing_shot', value: 'framing_shot' },
+]);
 
 const headerItems = [
   { text: '세션 ID', value: 'id' },
@@ -243,13 +251,13 @@ async function fetchListSessions() {
             userId: s.userId  ? Number(s.userId)  : null,
             imgId:  s.imgId   ? Number(s.imgId)   : null,
             sStat:  s.sStat   !== null ? Number(s.sStat) : null,
-            sDate:  util.formatUnixDateTime(s.sDateStr),
-            eDate:  util.formatUnixDateTime(s.eDateStr),
+            sDate: (s.sDateStr && s.sDateStr.trim()) ? Math.floor(new Date(s.sDateStr).getTime() / 1000) : null,
+            eDate: (s.eDateStr && s.eDateStr.trim()) ? Math.floor(new Date(s.eDateStr + 'T23:59:59').getTime() / 1000) : null,
 
             // [신규] 스냅샷 비즈니스 지표 필터
             category:    s.category    || null,
             feedback:    s.feedback    || null,
-            minStuckSec: s.minStuckSec ? Number(s.minStuckSec) : null,
+            minStuckSec: s.minStuckSec !== null && s.minStuckSec !== '' ? Number(s.minStuckSec) : null,
             canCapture:  s.canCapture  || null,
         });
 
@@ -264,6 +272,9 @@ async function fetchListSessions() {
             sStat:    item.sStat,
             sDate:    util.formatUnixDateTime(item.sDate),
             eDate:    item.eDate ? util.formatUnixDateTime(item.eDate) : '-',
+            device:   item.device ? `${item.device.platform ?? '-'} / ${item.device.appVersion ?? '-'}` : '-',
+            cDate:    util.formatUnixDateTime(item.cDate),
+            uDate:    util.formatUnixDateTime(item.uDate),
         }));
 
         totalCount.value = total;
@@ -285,10 +296,10 @@ async function fetchStatusLabelOption() {
       tagName: null,
     });
 
-    const statusItems = response?.data?.items || [];
+    const rawItems = response?.data?.items || [];
     const uniqueStatusOptions = new Map();
 
-    statusItems.forEach((status = {}) => {
+    rawItems.forEach((status = {}) => {
       const codeSuffix = Number(String(status.code || '').split('_').pop());
       const value = Number.isNaN(codeSuffix) ? status.code : codeSuffix;
 
