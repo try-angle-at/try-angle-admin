@@ -84,6 +84,14 @@
               @click.stop="handleClickBtn('goToRefImgDetail', (item?.raw ?? item)?.imgId)"
             >{{ (item?.raw ?? item)?.imgId ?? '-' }}</button>
           </template>
+
+          <template #item.sId="{ item }">
+            <button
+              type="button"
+              class="link-button"
+              @click.stop="handleClickBtn('goToSessionDetail', (item?.raw ?? item)?.sId)"
+            >{{ (item?.raw ?? item)?.sId ?? '-' }}</button>
+          </template>
         
           <template #item.action="{ item }">
             <v-btn
@@ -249,6 +257,13 @@ function handleClickBtn(action, value) {
 
     case 'goToDetail':
       goToSnapDetail(value);
+      break;
+
+    case 'goToSessionDetail':
+      if (!value || value === '-') {
+        return;
+      }
+      navigateTo(router, `/system/${value}`);
       break;
 
     case 'goToProductDetail':
