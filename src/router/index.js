@@ -72,6 +72,11 @@ const routes = [
     component: () => import(/* webpackChunkName: "sys-list" */ "@/pages/System/SysList.vue")
   },
   {
+    path: '/system-stats',
+    name: 'SysStats',
+    component: () => import(/* webpackChunkName: "Sys-stats" */ "@/pages/System/SysStats.vue")
+  },
+  {
     path: '/system/:id',
     name: 'SysDetail',
     component: () => import(/* webpackChunkName: "sys-detail" */ "@/pages/System/SysDetail.vue")
