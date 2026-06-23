@@ -65,7 +65,7 @@
               />
               <v-text-field
                   v-model="search.stuckSec"
-                  placeholder="최소 정체 시간 (초)"
+                  placeholder="최대 정체 시간 (초)"
                   class="inputbox | mr-2"
                   type="number"
                   variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
@@ -120,7 +120,7 @@
               type="button"
               class="link-button"
               @click.stop="handleClickBtn('goToDetail', item?.raw ?? item)"
-            >{{ (item?.raw ?? item)?.id ?? '-' }}</button>
+            >{{ shortenSessionId((item?.raw ?? item)?.id) }}</button>
           </template>
 
           <template #item.imgId="{ item }">
@@ -138,9 +138,28 @@
           <template #item.sStat="{ item }">
             <span
               v-if="(item?.raw ?? item)?.sStat !== undefined && (item?.raw ?? item)?.sStat !== null && (item?.raw ?? item)?.sStat !== '-'"
-              class="status-tag"
+              :class="['status-tag', getStatusTagClass((item?.raw ?? item)?.sStat)]"
             >{{ getStatusLabel((item?.raw ?? item)?.sStat) }}</span>
             <span v-else>-</span>
+          </template>
+
+          <template #item.snapshotCount="{ item }">
+            <span>{{ (item?.raw ?? item)?.snapshotCount ?? 0 }}</span>
+          </template>
+
+          <template #item.maxStuckSec="{ item }">
+            <span
+              v-if="(item?.raw ?? item)?.maxStuckSec !== null && (item?.raw ?? item)?.maxStuckSec !== undefined"
+              :class="{ 'stuck-sec-danger': isLongStuck((item?.raw ?? item)?.maxStuckSec) }"
+            >{{ formatStuckSec((item?.raw ?? item)?.maxStuckSec) }}</span>
+            <span v-else>-</span>
+          </template>
+
+          <template #item.mainFeedback="{ item }">
+            <span
+              class="feedback-text"
+              :title="(item?.raw ?? item)?.mainFeedback || '-'"
+            >{{ (item?.raw ?? item)?.mainFeedback || '-' }}</span>
           </template>
         
           <template #item.action="{ item }">
@@ -217,6 +236,9 @@ const headerItems = [
   { text: '종료일시', value: 'eDate' },
   { text: '디바이스', value: 'device' },
   { text: '세션 상태', value: 'sStat' },
+  { text: '총 스냅샷 수', value: 'snapshotCount' },
+  { text: '최대 정체 시간', value: 'maxStuckSec' },
+  { text: '주요 피드백 메시지', value: 'mainFeedback' },
   { text: '등록일', value: 'cDate' },
   { text: '수정일', value: 'uDate' },
   { text: '상세', value: 'action' },
@@ -236,6 +258,50 @@ onMounted(() => {
 function getStatusLabel(value) {
   const matchedOption = statusItems.value.find((option) => option.value === value || option.value === String(value));
   return matchedOption?.label || '-';
+}
+
+function getStatusTagClass(value) {
+  const stat = Number(value);
+  if (Number.isNaN(stat)) {
+    return '';
+  }
+
+  if (stat === 0) {
+    return 'status-tag--in-progress';
+  }
+  if (stat === 1) {
+    return 'status-tag--normal-ended';
+  }
+  if (stat === 2) {
+    return 'status-tag--auto-ended';
+  }
+  if (stat === 3) {
+    return 'status-tag--failed';
+  }
+
+  return '';
+}
+
+function shortenSessionId(id) {
+  if (!id) {
+    return '-';
+  }
+  const idStr = String(id);
+  return idStr.slice(0, 5);
+}
+
+function formatStuckSec(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '-';
+  }
+  return `${Number(value).toFixed(1)}초`;
+}
+
+function isLongStuck(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return false;
+  }
+  return Number(value) >= 3;
 }
 
 async function fetchListSessions() {
@@ -270,6 +336,9 @@ async function fetchListSessions() {
             userName: item.userName || '-',
             imgId:    item.imgId,
             sStat:    item.sStat,
+          snapshotCount: item.snapshotCount ?? 0,
+          maxStuckSec: item.maxStuckSec,
+          mainFeedback: item.mainFeedback || '-',
             sDate:    util.formatUnixDateTime(item.sDate),
             eDate:    item.eDate ? util.formatUnixDateTime(item.eDate) : '-',
             device:   item.device ? `${item.device.platform ?? '-'} / ${item.device.appVersion ?? '-'}` : '-',
@@ -464,10 +533,42 @@ function handleItemsPerPageChange(limit) {
   align-items: center;
   width: fit-content;
   border-radius: 100px;
-  background: #E6F0FF;
-  color: #2B7FFF;
   font-family: Pretendard;
   font-size: 12px;
   font-weight: 500;
+}
+
+.status-tag--in-progress {
+  background: #FFF7E6;
+  color: #B45309;
+}
+
+.status-tag--normal-ended {
+  background: #ECFDF3;
+  color: #027A48;
+}
+
+.status-tag--auto-ended {
+  background: #E6F0FF;
+  color: #2B7FFF;
+}
+
+.status-tag--failed {
+  background: #FEF2F2;
+  color: #DC2626;
+}
+
+.stuck-sec-danger {
+  color: #DC2626;
+  font-weight: 600;
+}
+
+.feedback-text {
+  display: block;
+  max-width: 240px;
+  color: #364153;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
