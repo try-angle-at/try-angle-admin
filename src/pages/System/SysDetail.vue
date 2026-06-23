@@ -71,6 +71,11 @@
             class="mr-3"
         >{{ statusLabel }}</v-chip>
         <v-btn
+            @click="isDownDialogOpen = true"
+            variant="outlined"
+            class="thin-btn | outline-grey | btn-width | mr-2"
+        >내보내기</v-btn>
+        <v-btn
             @click="fetchSessionDetail"
             variant="outlined"
             class="thin-btn | outline-grey | btn-width | mr-2"
@@ -313,6 +318,12 @@
             </template>
         </v-card>
     </v-dialog>
+
+    <SysDownDialog
+        v-model="isDownDialogOpen"
+        :is-loading="isExporting"
+        @confirm="handleConfirmDownload"
+    />
 </template>
 
 
@@ -324,6 +335,7 @@ import Util from '@/common/Util.js';
 import * as HttpHandler from '@/common/HttpHandler.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import SysDownDialog from './SysDownDialog.vue';
 
 const emit = defineEmits([
     'show-right-btn',
@@ -379,6 +391,8 @@ const refImgDetail = ref({
 const isSessionLoading = ref(false);
 const isRefLoading     = ref(false);
 const isRawDataOpen = ref(false);
+const isDownDialogOpen = ref(false);
+const isExporting = ref(false);
 const rawKeyword = ref('');
 const rawDataBoxRef = ref(null);
 const rawTextareaRef = ref(null);
@@ -1795,6 +1809,115 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
     dialog.value.isActive = true;
     dialog.value.isOneBtn = isOneBtn || false;
     dialog.value.okText   = okText   || '확인';
+}
+
+function getExportBaseName() {
+    const sid = session.value.id || resolvedSessionId.value || 'session';
+    const safeSid = String(sid).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `session_${safeSid}_snapshots_${y}${m}${d}_${hh}${mm}${ss}`;
+}
+
+function downloadTextFile(filename, text, mimeType) {
+    const blob = new Blob([text], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function buildJsonlContent() {
+    return snapshots.value.map((item) => JSON.stringify(item)).join('\n');
+}
+
+function escapeCsvCell(value) {
+    if (value == null) return '';
+    let cell = value;
+    if (typeof cell === 'object') {
+        cell = JSON.stringify(cell);
+    }
+    cell = String(cell);
+    if (/[",\n]/.test(cell)) {
+        return `"${cell.replace(/"/g, '""')}"`;
+    }
+    return cell;
+}
+
+function buildCsvContent() {
+    if (!snapshots.value.length) {
+        return '';
+    }
+
+    const preferredKeys = [
+        'ts', 'fseq', 'offsetMs', 'gate', 'phase', 'pidx',
+        'score', 'progress', 'passed', 'category', 'feedback',
+        'axis', 'action', 'reason', 'stuckSec', 'canCapture',
+        'orientation', 'headState', 'pitchDeg', 'rollDeg',
+        'zoomFactor', 'focalMm35eq', 'torsoDistM', 'torsoLength',
+        'bodyHeightFrac', 'faceVis', 'angleLabel', 'aspectRatio',
+        'size', 'centroid', 'mirror', 'kpHex', 'pvHex', 'bboxHex',
+    ];
+
+    const keySet = new Set();
+    snapshots.value.forEach((item) => {
+        Object.keys(item || {}).forEach((key) => keySet.add(key));
+    });
+
+    const keys = preferredKeys.filter((key) => keySet.has(key));
+    Array.from(keySet)
+        .filter((key) => !keys.includes(key))
+        .sort()
+        .forEach((key) => keys.push(key));
+
+    const header = keys.join(',');
+    const rows = snapshots.value.map((item) =>
+        keys.map((key) => escapeCsvCell(item?.[key])).join(','),
+    );
+
+    return [header, ...rows].join('\n');
+}
+
+function exportSnapshots(format) {
+    if (!snapshots.value.length) {
+        openDialog(
+            '내보내기 실패',
+            '다운로드할 스냅샷 데이터가 없습니다.',
+            () => { dialog.value.isActive = false; },
+            true,
+            '확인',
+        );
+        return;
+    }
+
+    const baseName = getExportBaseName();
+    if (format === 'csv') {
+        const csvContent = buildCsvContent();
+        downloadTextFile(`${baseName}.csv`, csvContent, 'text/csv;charset=utf-8;');
+        return;
+    }
+
+    const jsonlContent = buildJsonlContent();
+    downloadTextFile(`${baseName}.jsonl`, jsonlContent, 'application/x-ndjson;charset=utf-8;');
+}
+
+function handleConfirmDownload(format) {
+    isExporting.value = true;
+    try {
+        exportSnapshots(format);
+        isDownDialogOpen.value = false;
+    } finally {
+        isExporting.value = false;
+    }
 }
 </script>
 
