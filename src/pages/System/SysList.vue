@@ -64,7 +64,7 @@
                   hide-details
               />
               <v-text-field
-                  v-model="search.minStuckSec"
+                  v-model="search.stuckSec"
                   placeholder="최소 정체 시간 (초)"
                   class="inputbox | mr-2"
                   type="number"
@@ -184,7 +184,7 @@ const search = ref({
     // [신규] 스냅샷 비즈니스 지표 필터
     category:    null,
     feedback:    '',
-    minStuckSec: null,
+    stuckSec: null,
     canCapture:  null,
 });
 
@@ -257,7 +257,7 @@ async function fetchListSessions() {
             // [신규] 스냅샷 비즈니스 지표 필터
             category:    s.category    || null,
             feedback:    s.feedback    || null,
-            minStuckSec: s.minStuckSec !== null && s.minStuckSec !== '' ? Number(s.minStuckSec) : null,
+            stuckSec: s.stuckSec !== null && s.stuckSec !== '' ? Number(s.stuckSec) : null,
             canCapture:  s.canCapture  || null,
         });
 
@@ -329,7 +329,7 @@ function handleClickBtn(action, value) {
       search.value = {
           userId: null, imgId: null, sStat: null,
           sDateStr: '', eDateStr: '',
-          category: null, feedback: '', minStuckSec: null, canCapture: null,
+          category: null, feedback: '', stuckSec: null, canCapture: null,
       };
       pageNation.value.current = 1;
       fetchListSessions();
