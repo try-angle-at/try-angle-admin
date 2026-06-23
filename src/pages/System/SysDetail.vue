@@ -135,9 +135,33 @@
 
                 <div class="pose-controls px-3 pb-3" style="flex-shrink: 0;">
                     <v-row no-gutters class="align-item-center" style="gap: 10px;">
+                        <v-btn icon size="small" variant="outlined" class="play-btn" @click="stepFrame(-1)" :disabled="snapshots.length <= 1">
+                            <v-icon size="16">mdi-skip-previous</v-icon>
+                        </v-btn>
                         <v-btn icon size="small" variant="outlined" class="play-btn" :class="{ 'play-btn--on': isPlaying }" @click="togglePlay">
                             <v-icon size="16">{{ isPlaying ? 'mdi-pause' : 'mdi-play' }}</v-icon>
                         </v-btn>
+                        <v-btn icon size="small" variant="outlined" class="play-btn" @click="stepFrame(1)" :disabled="snapshots.length <= 1">
+                            <v-icon size="16">mdi-skip-next</v-icon>
+                        </v-btn>
+                        <v-menu location="top" offset="8">
+                            <template #activator="{ props: menuProps }">
+                                <v-btn v-bind="menuProps" variant="outlined" size="small" class="speed-btn">
+                                    {{ playbackSpeed.toFixed(1) }}x
+                                    <v-icon size="14" class="ml-1">mdi-chevron-down</v-icon>
+                                </v-btn>
+                            </template>
+                            <v-list density="compact" class="speed-menu">
+                                <v-list-item
+                                    v-for="option in playbackSpeedOptions"
+                                    :key="option"
+                                    :active="playbackSpeed === option"
+                                    @click="setPlaybackSpeed(option)"
+                                >
+                                    <v-list-item-title>{{ option.toFixed(1) }}x</v-list-item-title>
+                                </v-list-item>
+                            </v-list>
+                        </v-menu>
                         <v-slider v-model="scrubIndex" :min="0" :max="Math.max(0, snapshots.length - 1)" :step="1" hide-details color="#364153" track-color="#E5E8EB" thumb-size="12" density="compact" class="scrub-slider" @update:model-value="onScrub" @start="isPlaying = false" />
                         <span class="info-text scrub-count">{{ scrubIndex + 1 }} / {{ snapshots.length }}</span>
                     </v-row>
@@ -147,17 +171,6 @@
                         <v-row no-gutters class="align-item-center">
                             <v-icon size="15" color="#6A7282" class="mr-1">mdi-chart-line</v-icon>
                             <span class="info-text">실시간 AI 분석 추이</span>
-                        </v-row>
-                        <v-row no-gutters cols="auto" style="gap: 6px;">
-                            <v-btn
-                                v-for="metric in availableMetrics"
-                                :key="metric.key"
-                                size="x-small"
-                                :variant="activeMetrics.includes(metric.key) ? 'outlined' : 'text'"
-                                class="small-btn"
-                                :class="activeMetrics.includes(metric.key) ? 'outline-grey' : ''"
-                                @click="toggleMetric(metric.key)"
-                            >{{ metric.label }}</v-btn>
                         </v-row>
                     </div> <div class="chart-wrap chart-fill">
                         <canvas ref="chartCanvas" />
@@ -179,7 +192,7 @@
             <div class="rsec">
                 <div class="rsh">AI 판정 결과 (현재 시점)</div>
                 <v-row no-gutters class="align-item-center | justify-space-between | mb-2">
-                    <span class="metric-score-num" :style="{ color: scoreColor(currentSnapshot?.score) }">{{ currentSnapshot?.score ?? '—' }}</span>
+                    <span class="metric-score-num" :style="{ color: scoreColor(currentScorePct) }">{{ currentScorePct ?? '—' }}</span>
                     <v-chip size="x-small" :color="currentSnapshot?.passed ? '#16A34A' : '#9AA3AF'" variant="tonal">{{ currentSnapshot?.passed ? 'PASSED' : 'NOT PASSED' }}</v-chip>
                 </v-row>
                 <div class="drow"><span class="dk">category</span><span class="dv">{{ currentSnapshot?.category || '—' }}</span></div>
@@ -410,19 +423,16 @@ const skeletonGroups = [
 const chartCanvas   = ref(null);
 let   chartInstance = null;
 
-// realtime-sample.json: snapshots[].res = { score, passed, category, feedback, metadata: { progress, ... } }
-const availableMetrics = [
-    { key: 'score',    label: 'score'    },
-    { key: 'progress', label: 'progress' },
-];
-const activeMetrics = ref(['score', 'progress']);
-
 // ----- 라이브 pose 캔버스 / 시점 선택(슬라이드) ----- //
 const liveCanvasRef = ref(null);
 const scrubIndex    = ref(0);   // 현재 선택된 snapshot index
 const isPlaying     = ref(false);
 let   playTimer     = null;
-const PLAY_INTERVAL_MS = 33; // 초당 프레임에 맞춘 재생 간격 (~30fps 배치 기준)
+const playbackSpeed = ref(1);
+const playbackSpeedOptions = [0.5, 1.0, 2.0];
+const BASE_PLAY_INTERVAL_MS = 33; // 초당 프레임에 맞춘 재생 간격 (~30fps 배치 기준)
+
+const playIntervalMs = computed(() => Math.max(8, Math.round(BASE_PLAY_INTERVAL_MS / playbackSpeed.value)));
 
 const dialog = ref({
     title: '',
@@ -584,6 +594,11 @@ const currentProgressPct = computed(() => {
     return p == null ? '—' : `${Math.round(p * 100)}%`;
 });
 
+const currentScorePct = computed(() => {
+    const s = currentSnapshot.value?.score;
+    return s == null ? null : Math.round(Number(s) * 100);
+});
+
 const avgScore = computed(() => {
     if (!snapshots.value.length) return '—';
     const scores = snapshots.value.map(s => Number(s.score)).filter(isFinite);
@@ -633,6 +648,8 @@ onMounted(() => {
         fetchSessionDetail();
         fetchTagCategory();
     });
+
+    window.addEventListener('keydown', handlePlaybackKeydown);
     
     window.addEventListener('resize', drawSkeleton);
     window.addEventListener('resize', drawLiveSkeleton);
@@ -645,14 +662,11 @@ onBeforeUnmount(() => {
     }
     stopPlay();
     disposeThree3d();
+    window.removeEventListener('keydown', handlePlaybackKeydown);
     window.removeEventListener('resize', drawSkeleton);
     window.removeEventListener('resize', drawLiveSkeleton);
     window.removeEventListener('resize', handleThreeResize);
 });
-
-watch(activeMetrics, () => {
-    nextTick(renderChart);
-}, { deep: true });
 
 watch(
     () => refImgDetail.value.aiDoc,
@@ -856,7 +870,7 @@ async function fetchSessionDetail() {
 
         updatePageCfg();
         await nextTick();
-        renderChart();
+        await scheduleChartRender();
     } catch (error) {
         console.error('세션 상세 조회 실패:', error);
         openDialog(
@@ -1489,26 +1503,38 @@ async function renderChart() {
         s.ts ? util.formatUnixDateTime(s.ts) : `#${i + 1}`
     );
 
-    // progress는 0~1 스케일이므로 score(0~100)와 같은 축에서 보기 위해 100배 스케일
     const valueOf = (s, key) => {
-        if (key === 'progress') {
-            return s.progress == null ? null : Math.round(s.progress * 100);
+        const value = s[key];
+        if (value == null) {
+            return null;
         }
-        return s[key] ?? null;
+        return Math.round(Number(value) * 100);
     };
 
-    // 항상 score 와 progress를 모두 노출합니다 (토글 버튼은 UI에 남기되, 차트 데이터는 항상 포함)
-    const datasets = availableMetrics.map((m) => ({
-        label:            m.label,
-        data:             snapshots.value.map((s) => valueOf(s, m.key)),
-        borderColor:      colorMap[m.key],
-        backgroundColor:  colorMap[m.key] + '22',
-        fill:             true,
-        tension:          0.35,
-        pointRadius:      0,
-        pointHoverRadius: 5,
-        borderWidth:      1.6,
-    }));
+    const datasets = [
+        {
+            label:            'score',
+            data:             snapshots.value.map((s) => valueOf(s, 'score')),
+            borderColor:      colorMap.score,
+            backgroundColor:  colorMap.score + '22',
+            fill:             true,
+            tension:          0.35,
+            pointRadius:      0,
+            pointHoverRadius: 5,
+            borderWidth:      1.6,
+        },
+        {
+            label:            'progress',
+            data:             snapshots.value.map((s) => valueOf(s, 'progress')),
+            borderColor:      colorMap.progress,
+            backgroundColor:  colorMap.progress + '22',
+            fill:             true,
+            tension:          0.35,
+            pointRadius:      0,
+            pointHoverRadius: 5,
+            borderWidth:      1.6,
+        },
+    ];
 
     chartInstance = new Chart(chartCanvas.value, {
         type: 'line',
@@ -1557,24 +1583,47 @@ async function renderChart() {
     syncChartNeedle();
 }
 
+async function scheduleChartRender() {
+    await nextTick();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    await renderChart();
+}
+
 function syncChartNeedle() {
     if (chartInstance) {
         chartInstance.draw();
     }
 }
 
-function toggleMetric(key) {
-    const idx = activeMetrics.value.indexOf(key);
-    if (idx === -1) {
-        activeMetrics.value.push(key);
-    } else {
-        activeMetrics.value.splice(idx, 1);
-    }
-}
-
 // ----- 슬라이드(시점 선택) + 재생 ----- //
 function onScrub(value) {
     scrubIndex.value = Number(value) || 0;
+}
+
+function setPlaybackSpeed(speed) {
+    playbackSpeed.value = Number(speed) || 1;
+    if (isPlaying.value) {
+        restartPlay();
+    }
+}
+
+function startPlay() {
+    stopPlay();
+    isPlaying.value = true;
+    playTimer = setInterval(() => {
+        if (scrubIndex.value >= snapshots.value.length - 1) {
+            stopPlay();
+            return;
+        }
+        scrubIndex.value += 1;
+    }, playIntervalMs.value);
+}
+
+function restartPlay() {
+    if (!isPlaying.value) {
+        return;
+    }
+    startPlay();
 }
 
 function togglePlay() {
@@ -1586,14 +1635,13 @@ function togglePlay() {
     if (scrubIndex.value >= snapshots.value.length - 1) {
         scrubIndex.value = 0;
     }
-    isPlaying.value = true;
-    playTimer = setInterval(() => {
-        if (scrubIndex.value >= snapshots.value.length - 1) {
-            stopPlay();
-            return;
-        }
-        scrubIndex.value += 1;
-    }, PLAY_INTERVAL_MS);
+    startPlay();
+}
+
+function stepFrame(delta) {
+    stopPlay();
+    const nextIndex = Math.min(Math.max(0, scrubIndex.value + delta), Math.max(0, snapshots.value.length - 1));
+    scrubIndex.value = nextIndex;
 }
 
 function stopPlay() {
@@ -1601,6 +1649,29 @@ function stopPlay() {
     if (playTimer) {
         clearInterval(playTimer);
         playTimer = null;
+    }
+}
+
+function handlePlaybackKeydown(event) {
+    if (!snapshots.value.length) {
+        return;
+    }
+
+    const target = event.target;
+    const tagName = target?.tagName?.toLowerCase();
+    if (target?.isContentEditable || ['input', 'textarea', 'select'].includes(tagName)) {
+        return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        stepFrame(-1);
+        return;
+    }
+
+    if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        stepFrame(1);
     }
 }
 
@@ -1758,11 +1829,19 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 
 .chart-wrap {
     position: relative;
+    display: flex;
+    align-items: stretch;
     height: 160px;
     background-color: transparent;
     border: 0.7px solid #E5E8EB;
     border-radius: 8px;
     padding: 10px 12px;
+}
+
+.chart-wrap :deep(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
 }
 
 .central-panel {
