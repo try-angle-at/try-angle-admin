@@ -605,6 +605,8 @@ export async function deleteProduct(params = {}) {
 
 // ----- 세션 관련 API ----- //
 export async function listSessions(params = {}) {
+  const resolvedStuckSec = params.stuckSec ?? params.minStuckSec ?? null;
+
   const filterBody = compact({
     userId: params.userId ?? null,
     imgId: params.imgId ?? null,
@@ -613,7 +615,7 @@ export async function listSessions(params = {}) {
     eDate: params.eDate ?? null,
     category: params.category ?? null,
     feedback: params.feedback ?? null,
-    minStuckSec: params.minStuckSec ?? null,
+    stuckSec: resolvedStuckSec,
     canCapture: params.canCapture ?? null,
   });
  

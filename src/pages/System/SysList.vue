@@ -1,100 +1,107 @@
 <template>
     <v-container fluid>
-        <v-row no-gutters class="search-row | align-item-center | justify-space-between">
-            <v-col cols="auto" class="align-item-center | d-flex | justify-start">
-              <v-text-field
-                  v-model="search.userId"
-                  placeholder="사용자 ID"
-                  class="inputbox | mr-2"
-                  type="number"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-text-field
-                  v-model="search.imgId"
-                  placeholder="이미지 ID"
-                  class="inputbox | mr-2"
-                  type="number"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-select
-                  v-model="search.sStat"
-                  :items="statusItems"
-                  item-title="label"
-                  item-value="value"
-                  placeholder="세션 상태"
-                  class="inputbox | mr-2"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-text-field
-                  v-model="search.sDateStr"
-                  placeholder="시작일 (YYYY-MM-DD)"
-                  class="datebox | mr-2"
-                  type="date"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-text-field
-                  v-model="search.eDateStr"
-                  placeholder="종료일 (YYYY-MM-DD)"
-                  class="datebox"
-                  type="date"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-            </v-col>
-            <v-col cols="auto" class="align-item-center | d-flex | mt-3">
-              <v-select
-                  v-model="search.category"
-                  :items="categoryItems"
-                  item-title="label"
-                  item-value="value"
-                  placeholder="촬영 단계 (category)"
-                  class="inputbox | mr-2"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-text-field
-                  v-model="search.feedback"
-                  placeholder="피드백 문구 키워드"
-                  class="inputbox | mr-2"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-text-field
-                  v-model="search.stuckSec"
-                  placeholder="최대 정체 시간 (초)"
-                  class="inputbox | mr-2"
-                  type="number"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-              <v-select
-                  v-model="search.canCapture"
-                  :items="canCapItems"
-                  item-title="label"
-                  item-value="value"
-                  placeholder="자동촬영 여부"
-                  class="inputbox"
-                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                  hide-details
-              />
-            </v-col>
-            <v-col cols="auto" class="align-item-center">
-                <v-btn
-                    @click="handleClickBtn('reset')"
-                    variant="outlined"
-                    class="thin-btn | outline-grey | btn-width | mr-2"
-                >초기화</v-btn>
-                <v-btn
-                    @click="handleClickBtn('search')"
-                    variant="outlined"
-                    class="thin-btn | fill-grey | btn-width"
-                >검색</v-btn>
-            </v-col>
-        </v-row>
+        <!-- 첫 번째 행: 기본 필터 -->
+        <v-col cols="12" class="search-row">
+          <v-row no-gutters class="align-item-center">
+              <v-col cols="auto" class="align-item-center | d-flex | justify-start">
+                <v-text-field
+                    v-model="search.userId"
+                    placeholder="사용자 ID"
+                    class="inputbox | mr-2"
+                    type="number"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-text-field
+                    v-model="search.imgId"
+                    placeholder="이미지 ID"
+                    class="inputbox | mr-2"
+                    type="number"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-select
+                    v-model="search.sStat"
+                    :items="statusItems"
+                    item-title="label"
+                    item-value="value"
+                    placeholder="세션 상태"
+                    class="inputbox | mr-2"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-text-field
+                    v-model="search.sDateStr"
+                    placeholder="시작일 (YYYY-MM-DD)"
+                    class="datebox | mr-2"
+                    type="date"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-text-field
+                    v-model="search.eDateStr"
+                    placeholder="종료일 (YYYY-MM-DD)"
+                    class="datebox"
+                    type="date"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+              </v-col>
+          </v-row>
+  
+          <!-- 두 번째 행: 고급 필터 및 버튼 -->
+          <v-row no-gutters class="mt-4 | align-item-center | justify-space-between">
+              <v-col cols="auto" class="align-item-center | d-flex | justify-start">
+                <v-select
+                    v-model="search.category"
+                    :items="categoryItems"
+                    item-title="label"
+                    item-value="value"
+                    placeholder="촬영 단계 (category)"
+                    class="inputbox | mr-2"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-text-field
+                    v-model="search.feedback"
+                    placeholder="피드백 문구 키워드"
+                    class="inputbox | mr-2"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-text-field
+                    v-model="search.stuckSec"
+                    placeholder="최소 정체 시간 (초)"
+                    class="inputbox | mr-2"
+                    type="number"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-select
+                    v-model="search.canCapture"
+                    :items="canCapItems"
+                    item-title="label"
+                    item-value="value"
+                    placeholder="자동촬영 여부"
+                    class="inputbox"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+              </v-col>
+              <v-col cols="auto" class="align-item-center">
+                  <v-btn
+                      @click="handleClickBtn('reset')"
+                      variant="outlined"
+                      class="thin-btn | outline-grey | btn-width | mr-2"
+                  >초기화</v-btn>
+                  <v-btn
+                      @click="handleClickBtn('search')"
+                      variant="outlined"
+                      class="thin-btn | fill-grey | btn-width"
+                  >검색</v-btn>
+              </v-col>
+          </v-row>
+        </v-col>
 
         <v-row no-gutters class="align-item-center | justify-space-between | mt-8 | mb-2 | ml-2">
             <v-col class="search-label">
@@ -221,11 +228,6 @@ const canCapItems = ref([
   { label: '전체', value: null },
   { label: '가능', value: 'true' },
   { label: '불가', value: 'false' },
-]);
-const categoryItems = ref([
-  { label: '전체 단계', value: null },
-  { label: 'person', value: 'person' },
-  { label: 'framing_shot', value: 'framing_shot' },
 ]);
 
 const headerItems = [
