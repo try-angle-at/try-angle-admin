@@ -22,46 +22,57 @@
     </v-row>
 
     <v-row no-gutters>
-      <v-col cols="5" class="img-frame">
-        <v-img
-          v-if="snapDetail.snapUrl"
-          :src="snapDetail.snapUrl"
-          aspect-ratio="1"
-          cover
-        />
+      <v-col cols="5">
+        <div class="img-frame">
+          <v-img
+            v-if="snapDetail.snapUrl"
+            :src="snapDetail.snapUrl"
+            aspect-ratio="1"
+            cover
+          />
+          <v-row
+            v-else
+            no-gutters
+            class="align-item-center | justify-center"
+            style="height: 180px; color: #9CA3AF; font-size: 13px;"
+          >
+            이미지가 없습니다.
+          </v-row>
+        </div>
+
+        <v-row no-gutters class="align-item-center | justify-space-between | mt-12">
+          <v-label class="ml-1">레퍼런스 이미지</v-label>
+          <v-col cols="auto" class="pl-4">
+            <v-btn
+              @click.stop="handleClickBtn('goToRefImgDetail')"
+              variant="outlined"
+              size="small"
+              class="small-btn | outline-grey"
+              :disabled="!refImgDetail.id"
+            >이미지 바로가기</v-btn>
+          </v-col>
+        </v-row>
+
+        <v-row no-gutters justify="start" class="mt-1">
+          <div class="ref-img-frame">
+            <v-img
+                v-if="refImgDetail.imgUrl"
+                :src="refImgDetail.imgUrl"
+                cover
+            />
+            <v-row
+                v-else
+                no-gutters
+                class="align-item-center | justify-center"
+                style="height: 180px; color: #9CA3AF; font-size: 13px;"
+            >
+                레퍼런스 이미지가 없습니다.
+            </v-row>
+          </div>
+        </v-row>
       </v-col>
 
       <v-col cols="7" class="pl-8 | pr-4">
-        <v-row no-gutters justify="start">
-          <v-label class="ml-1">레퍼런스 이미지</v-label>
-        </v-row>
-        <v-row no-gutters justify="center" class="mt-1">
-            <v-col cols="4" class="ref-preview-frame">
-                <v-img
-                    v-if="refImgDetail.imgUrl"
-                    :src="refImgDetail.imgUrl"
-                    cover
-                />
-                <v-row
-                    v-else
-                    no-gutters
-                    class="align-item-center | justify-center"
-                    style="height: 180px; color: #9CA3AF; font-size: 13px;"
-                >
-                    레퍼런스 이미지가 없습니다.
-                </v-row>
-          </v-col>
-          <v-col cols="8" class="pl-4">
-                <v-btn
-                  @click.stop="handleClickBtn('goToRefImgDetail')"
-                  variant="outlined"
-                  size="small"
-                  class="small-btn | outline-grey"
-                  :disabled="!refImgDetail.id"
-                >이미지 바로가기</v-btn>
-          </v-col>
-        </v-row>
-
         <v-row no-gutters justify="start" class="mt-5">
           <v-label class="ml-1">코멘트</v-label>
         </v-row>
@@ -742,20 +753,28 @@ function openDialog(title, text, onConfirm, isOneBtn, okText) {
 }
 
 .img-frame {
-  width: 100%;
-  padding-top: 100%;
   position: relative;
-  background-color: #ffffff;
-  border: 0.7px solid #E5E8EB;
+  align-items: center;
+  display: flex;
+  width: 100%;
+  background-color: #F9FAFB;
+  border: 1.5px solid #C0C8D4;
   border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
 }
 
-.ref-preview-frame {
-    border: 0.7px solid #E5E8EB;
-    width: 100%;
-    padding-top: 100%;
-    border-radius: 8px;
-    background-color: #ffffff;
+
+.ref-img-frame {
+  border: 0.7px solid #E5E8EB;
+  align-items: center;
+  display: flex;
+  width: 320px;
+  background-color: #F9FAFB;
+  border: 1.5px solid #C0C8D4;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .inputbox :deep(.v-field__input) {
