@@ -52,6 +52,14 @@
           @change="handleFileChange"
         />
 
+        <input
+          ref="jsonFileInputRef"
+          type="file"
+          accept="application/json,.json"
+          style="display: none;"
+          @change="handleJsonFileChange"
+        />
+
         <v-row no-gutters class="mt-2 | justify-center">
           <span class="hint-text">JPG, PNG, WEBP · 최대 10MB</span>
         </v-row>
@@ -130,16 +138,20 @@
         </v-row>
 
         <v-row no-gutters justify="start" class="mt-1">
-          <v-label class="ml-1">키워드</v-label>
+          <v-label class="ml-1">이미지 태그</v-label>
         </v-row>
         <v-row no-gutters justify="center" class="mt-1">
-          <v-combobox
-            v-model="refImgForm.kwd"
-            placeholder="키워드를 입력 후 Enter"
-            class="inputbox"
-            multiple chips closable-chips
-            variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-          />
+            <v-select
+              v-model="refImgForm.kwd"
+              :items="tagOptions"
+              item-title="label"
+              item-value="value"
+              multiple
+              chips
+              placeholder="이미지 태그" 
+              class="inputbox"
+              variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+            />
         </v-row>
 
         <v-row no-gutters justify="start" class="mt-1 | gap-16">
@@ -188,7 +200,17 @@
             @update:model-value="errorMsg.aiDoc = ''"
             auto-grow rows="3" row-height="5" max-rows="6"
             variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-          />
+          >
+            <template #append-inner>
+              <v-btn
+                size="x-small"
+                variant="text"
+                icon="mdi-upload"
+                color="#4A5565"
+                @click.stop="triggerJsonFileInput"
+              />
+            </template>
+          </v-textarea>
         </v-row>
       </v-col>
     </v-row>
@@ -278,10 +300,13 @@ const isUploading = ref(false);
 
 // 파일 업로드 관련
 const fileInputRef = ref(null);
+const jsonFileInputRef = ref(null);
 const refImgPreviewUrl = ref('');   // 로컬 미리보기 URL
 const uploadedFileName = ref('');   // 업로드된 파일명 표시용
 
 const categoryOptions = ref([]);
+const tagOptions = ref([]);
+const tagNameByCode = ref({});
 
 const errorMsg = ref({
   ctgId: '',
@@ -312,6 +337,7 @@ onMounted(() => {
   });
 
   fetchCategoryOptions();
+  fetchTagCategory();
 });
 
 onUnmounted(() => {
@@ -338,6 +364,47 @@ watch(priInput, (value) => {
 // ----- 함수 정의 ----- //
 function triggerFileInput() {
   fileInputRef.value?.click();
+}
+
+function triggerJsonFileInput() {
+  jsonFileInputRef.value?.click();
+}
+
+function handleJsonFileChange(event) {
+  const file = event.target?.files?.[0];
+  if (file) {
+    processJsonFile(file);
+  }
+  // input value 초기화 (같은 파일 재선택 허용)
+  if (jsonFileInputRef.value) {
+    jsonFileInputRef.value.value = '';
+  }
+}
+
+function processJsonFile(file) {
+  if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+    openDialog('업로드 실패', 'JSON 파일만 업로드할 수 있습니다.', () => {
+      dialog.value.isActive = false;
+    }, true, '확인');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const text = e.target?.result;
+      // 파싱 후 재직렬화하여 포맷 정규화
+      const parsed = JSON.parse(text);
+      aiDocInput.value = JSON.stringify(parsed, null, 2);
+      errorMsg.value.aiDoc = '';
+    } catch {
+      errorMsg.value.aiDoc = '올바른 JSON 형식의 파일이 아닙니다.';
+    }
+  };
+  reader.onerror = () => {
+    errorMsg.value.aiDoc = 'JSON 파일을 읽는 중 오류가 발생했습니다.';
+  };
+  reader.readAsText(file);
 }
 
 function handleFileDrop(event) {
@@ -432,6 +499,53 @@ async function fetchCategoryOptions() {
   } catch (error) {
     console.error('카테고리 옵션 조회 실패:', error);
     categoryOptions.value = [];
+  }
+}
+
+async function fetchTagCategory() {
+  try {
+    const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
+      HttpHandler.listTags({
+        page: 0,
+        parentCode: 'MOOD_ROOT',
+        tagName: null,
+      }),
+      HttpHandler.listTags({
+        page: 0,
+        parentCode: 'CLOTH_ROOT',
+        tagName: null,
+      }),
+      HttpHandler.listTags({
+        page: 0,
+        parentCode: 'SHOT_ROOT',
+        tagName: null,
+      }),
+    ]);
+
+    const moodTagItems = moodTagResponse?.data?.items || [];
+    const clothTagItems = clothTagResponse?.data?.items || [];
+    const shotTagItems = shotTagResponse?.data?.items || [];
+    const tagItems = [...moodTagItems, ...clothTagItems, ...shotTagItems];
+    const uniqueTags = new Map();
+
+    tagItems.forEach((tag = {}) => {
+      const code = tag.code;
+      if (!code || uniqueTags.has(code)) {
+        return;
+      }
+
+      uniqueTags.set(code, {
+        value: code,
+        label: tag.tagName || code,
+      });
+    });
+
+    tagOptions.value = [
+      ...Array.from(uniqueTags.values()),
+    ];
+  } catch (error) {
+    console.error('태그 옵션 조회 실패:', error);
+    tagNameByCode.value = {};
   }
 }
 
