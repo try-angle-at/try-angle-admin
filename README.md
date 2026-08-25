@@ -4,8 +4,10 @@ TryAngle 서비스 운영용 어드민 웹 콘솔.
 레퍼런스 이미지·카테고리·상품·스냅·회원을 관리하며, 백엔드로
 [try-angle-server](https://github.com/try-angle-at/try-angle-server)의 REST API를 사용한다.
 
+- **운영 주소: https://d3qnwc4wvz8vwf.cloudfront.net** (CloudFront — 어드민 정적 파일 + `/api/*`를 EC2로 프록시, HTTPS)
 - 스택: Vue 3 · Vuetify 3 · Vite (SPA)
 - 인증: 서버 발급 JWT (Bearer) — 어드민 기능은 ADMIN 이상 계정으로 로그인
+- 배포 갱신: `npm run build` → `docs/`를 S3 `s3://project9-83-seoul-s3-541673202328-ap-northeast-2-an/admin/`에 sync (EC2의 IAM Role로) → CloudFront 캐시 무효화(`/*`)
 
 ## 실행 방법
 
