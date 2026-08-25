@@ -12,7 +12,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/fooding/' : '',
+  base: '/',  // 루트 배포 (CloudFront). 옛 프로젝트의 '/fooding/' 하위경로 잔재 제거
   build: {
     outDir: 'docs',
     emptyOutDir: true,
