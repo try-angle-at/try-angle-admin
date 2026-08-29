@@ -1,135 +1,55 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a id="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
+# TryAngle Admin
 
+TryAngle 서비스 운영용 어드민 웹 콘솔.
+레퍼런스 이미지·카테고리·상품·스냅·회원을 관리하며, 백엔드로
+[try-angle-server](https://github.com/try-angle-at/try-angle-server)의 REST API를 사용한다.
 
+- **운영 주소: https://d3qnwc4wvz8vwf.cloudfront.net** (CloudFront — 어드민 정적 파일 + `/api/*`를 EC2로 프록시, HTTPS)
+- 스택: Vue 3 · Vuetify 3 · Vite (SPA)
+- 인증: 서버 발급 JWT (Bearer) — 어드민 기능은 ADMIN 이상 계정으로 로그인
+- 배포 갱신: `npm run build` → `docs/`를 S3 `s3://project9-83-seoul-s3-541673202328-ap-northeast-2-an/admin/`에 sync (EC2의 IAM Role로) → CloudFront 캐시 무효화(`/*`)
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
+## 실행 방법
 
-<!-- [![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![project_license][license-shield]][license-url] -->
+Node.js 18+ 필요.
 
+```bash
+cp .env.example .env      # 필요하면 값 수정 (기본값 = 운영 EC2 서버)
+npm install
+npm run dev               # http://localhost:5173
+```
 
+빌드(정적 파일 생성)는 `npm run build` → `dist/` 폴더가 결과물이다.
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/GetOurRI/DungDong">
-    <img src="src/assets/logo.png" alt="Logo" width="80" height="80">
-  </a>
+## 환경 변수 (.env)
 
-<h1 align="center">둥지동지</h1>
+| 변수 | 의미 |
+|---|---|
+| `VITE_API_BASE_URL` | API 서버 주소, **끝에 `/api` 포함** (예: `http://52.78.214.200:8080/api`) |
+| `VITE_IMAGE_BASE_URL` | 이미지 공개 URL 베이스 — 서버가 저장한 파일 경로 앞에 붙음 |
+| `VITE_API_TIMEOUT` | API 타임아웃(ms) |
 
-  <p align="center">
-    🖼️ 한 장의 이미지로 룸메이트 구하기!
-    <br />
-    <a href="https://getourri.github.io/DungDong"><strong>둥지동지 바로가기</strong></a>
-    <a href="https://github.com/GetOurRI"><strong>프로젝트 설명 바로가기</strong></a>
-    <br />
-    <br />
-  </p>
-</div>
+## 화면 구성
 
-<!-- 프로젝트 소개 -->
-## 프로젝트 소개
+| 경로 | 화면 |
+|---|---|
+| `/login`, `/register`, `/user` | 로그인 · 가입 · 내 정보 |
+| `/ref-images` | 레퍼런스 이미지 목록/등록/상세(AI 문서 포함) |
+| `/category` | 이미지 카테고리 관리 |
+| `/products` | 상품 관리 |
+| `/snaps` | 스냅(촬영 결과) 관리 |
+| `/tag` | 태그 관리 — ⚠️ 아래 "알려진 공백" 참고 |
+| `/system`, `/system-stats` | 시스템/통계 |
+| `/simulator` | 카메라 시뮬레이터(디버그) |
 
-![둥지동지 스크린샷](src/assets/main_product_img.png)
+## 서버 연동 메모
 
-둥지동지는 중앙대학교 다빈치 캠퍼스의 학우들이 기숙사 룸메이트를 빠르고 편하게 구할 수 있도록 기획한 프로젝트입니다.<br>
-자신의 기숙사 생활에 대한 설문을 기반으로 룸메이트 구인 글에 사용할 이미지를 자동으로 생성해줍니다.
-모바일 웹에 최적화된 UI를 통해 누구나 간편하게 이용할 수 있습니다.
+- API 명세: 서버의 Swagger(`{서버주소}/docs`)와 `try-angle-server/docs/STARTGUID.md` 기준.
+- **알려진 공백** (2026-08 기준, 서버 쪽 미구현):
+  - 태그 화면이 부르는 `/tag/*` API — 서버에 라우트·`tb_tag` 테이블이 아직 없음
+- `src/common/Firebase.js`는 어디서도 import하지 않는 잔재 코드(미사용).
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+## 이력
 
-
-### 📚 기술 스택
-
-[![Vue][Vue.js]][Vue-url] [![Vuetify][Vuetify]][Vuetify-url] 
-[![Firebase][Firebase]][Firebase-url]
-[![Github Pages][Github Pages]][Github-Pages-url] 
-[![Figma][Figma]][Figma-url] 
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- 시작하기 -->
-## 시작하기
-### 사전 요구사항
-
-이 프로젝트는 `Vuetify`와 `Vue.js`를 기반으로 하고 있습니다. 
-
-
-### 설치
-
-1. Firebase에서 API 키 발급 [https://firebase.google.com/docs/firestore](https://firebase.google.com/docs/firestore)
-2. 레포 클론하기
-   ```sh
-   git clone https://github.com/Ebee1205/DungDong.git
-   ```
-3. NPM 패키지 설치
-   ```sh
-   npm install
-   ```
-4. `.env` 파일 생성 후 Firebase API 키 입력
-   ```.env
-   // .env file
-   
-    VITE_FIREBASE_API_KEY = 
-    VITE_FIREBASE_AUTH_DOMAIN = 
-    VITE_FIREBASE_PROJECT_ID = 
-    VITE_FIREBASE_STORAGE_BUCKET = 
-    VITE_FIREBASE_MESSAGING_SENDER_ID = 
-    VITE_FIREBASE_APP_ID = 
-    VITE_FIREBASE_MEASUREMENT_ID = 
-   ```
-<!-- 5. Change git remote url to avoid accidental pushes to base project
-   ```sh
-   git remote set-url origin github_username/repo_name
-   git remote -v # confirm the changes
-   ``` -->
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/github_username/repo_name.svg?style=for-the-badge
-[contributors-url]: https://github.com/github_username/repo_name/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/github_username/repo_name.svg?style=for-the-badge
-[forks-url]: https://github.com/github_username/repo_name/network/members
-[stars-shield]: https://img.shields.io/github/stars/github_username/repo_name.svg?style=for-the-badge
-[stars-url]: https://github.com/github_username/repo_name/stargazers
-[issues-shield]: https://img.shields.io/github/issues/github_username/repo_name.svg?style=for-the-badge
-[issues-url]: https://github.com/github_username/repo_name/issues
-[license-shield]: https://img.shields.io/github/license/github_username/repo_name.svg?style=for-the-badge
-[license-url]: https://github.com/github_username/repo_name/blob/master/LICENSE.txt
-
-[product-screenshot]: images/screenshot.png
-
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Vuetify]: https://img.shields.io/badge/Vuetify-1867C0?style=for-the-badge&logo=vuetify&logoColor=AEDDFF
-[Vuetify-url]: https://vuetifyjs.com/
-[Figma]: https://img.shields.io/badge/figma-%23F24E1E.svg?style=for-the-badge&logo=figma&logoColor=white
-[Figma-url]: https://www.figma.com/
-[Firebase]: https://img.shields.io/badge/firebase-a08021?style=for-the-badge&logo=firebase&logoColor=ffcd34
-[Firebase-url]: https://firebase.google.com/
-[Github Pages]:https://img.shields.io/badge/github%20pages-121013?style=for-the-badge&logo=github&logoColor=white
-[Github-Pages-url]: https://pages.github.com/
+- 이 저장소는 이전 개발자의 다른 프로젝트 템플릿을 기반으로 시작되어
+  패키지명 등에 옛 이름(DungDong/Fooding)이 남아 있었고, 2026-08에 정리했다.

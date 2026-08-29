@@ -11,7 +11,7 @@
         <v-col cols="auto" class="header-subtitle">
           <v-img
           src="@/assets/title.png"
-          alt="Fooding Logo"
+          alt="TryAngle Logo"
           contain width="200"
           />
         </v-col>
