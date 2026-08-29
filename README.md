@@ -47,7 +47,6 @@ npm run dev               # http://localhost:5173
 - API 명세: 서버의 Swagger(`{서버주소}/docs`)와 `try-angle-server/docs/STARTGUID.md` 기준.
 - **알려진 공백** (2026-08 기준, 서버 쪽 미구현):
   - 태그 화면이 부르는 `/tag/*` API — 서버에 라우트·`tb_tag` 테이블이 아직 없음
-  - `/auth/token` (폼 로그인) — 서버에 라우트 없음 (JSON `/auth/login`은 정상)
 - `src/common/Firebase.js`는 어디서도 import하지 않는 잔재 코드(미사용).
 
 ## 이력
