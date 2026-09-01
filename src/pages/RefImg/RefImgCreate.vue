@@ -138,11 +138,43 @@
         </v-row>
 
         <v-row no-gutters justify="start" class="mt-1">
+          <v-label class="ml-1">도메인 (패션/미감)</v-label>
+        </v-row>
+        <v-row no-gutters justify="center" class="mt-1">
+            <v-select
+              v-model="domainCodes"
+              :items="REF_DOMAIN_OPTIONS"
+              item-title="label"
+              item-value="value"
+              multiple
+              chips
+              closable-chips
+              placeholder="이 레퍼런스가 속한 도메인 선택"
+              class="inputbox"
+              variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+            >
+              <template #chip="{ item, props }">
+                <v-chip v-bind="props" :color="item.raw.color" variant="flat" size="small">
+                  <v-icon start size="14">{{ item.raw.icon }}</v-icon>{{ item.raw.label }}
+                </v-chip>
+              </template>
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props" :title="null">
+                  <v-list-item-title>
+                    <v-icon size="16" :color="item.raw.color" class="mr-1">{{ item.raw.icon }}</v-icon>
+                    {{ item.raw.label }}
+                  </v-list-item-title>
+                </v-list-item>
+              </template>
+            </v-select>
+        </v-row>
+
+        <v-row no-gutters justify="start" class="mt-1">
           <v-label class="ml-1">이미지 태그</v-label>
         </v-row>
         <v-row no-gutters justify="center" class="mt-1">
             <v-select
-              v-model="refImgForm.kwd"
+              v-model="kwdTags"
               :items="tagOptions"
               item-title="label"
               item-value="value"
@@ -266,11 +298,12 @@
 
 <script setup>
 // ----- 선언부 ----- //
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { navigateTo } from '@/common/RouterUtil.js';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
+import { REF_DOMAIN_OPTIONS, splitDomainCodes } from '@/common/refDomains.js';
 
 const emit = defineEmits([
   'show-right-btn',
@@ -290,6 +323,23 @@ const refImgForm = ref({
   aiDoc: null,
   expWeight: 0,
   pri: 0,
+});
+
+// 도메인(DOMAIN_*)과 일반 태그를 같은 kwd 배열 위에서 나눠 편집한다 —
+// 저장/전송 코드는 refImgForm.kwd 하나만 보면 되므로 무변경.
+const domainCodes = computed({
+  get: () => splitDomainCodes(refImgForm.value.kwd).domains,
+  set: (vals) => {
+    const { rest } = splitDomainCodes(refImgForm.value.kwd);
+    refImgForm.value.kwd = [...(vals || []), ...rest];
+  },
+});
+const kwdTags = computed({
+  get: () => splitDomainCodes(refImgForm.value.kwd).rest,
+  set: (vals) => {
+    const { domains } = splitDomainCodes(refImgForm.value.kwd);
+    refImgForm.value.kwd = [...domains, ...(vals || [])];
+  },
 });
 
 const expWeightInput = ref('0');
