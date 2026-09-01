@@ -207,6 +207,7 @@ import Util from '@/common/Util.js';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
 import { REF_DOMAIN_OPTIONS, splitDomainCodes, domainMeta } from '@/common/refDomains.js';
+import { TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
 
 const emit = defineEmits([
   'show-right-btn',
@@ -354,6 +355,14 @@ async function fetchListCategory() {
   }
 }
 
+function applyStaticTagCatalog() {
+  // 서버 태그 API(/tag/*) 미구현 상태의 정적 분류 카탈로그 (tagCatalog.js)
+  tagOptions.value = [...TAG_SELECT_ITEMS];
+  if (typeof tagNameByCode !== 'undefined') {
+    tagNameByCode.value = { ...TAG_LABEL_BY_CODE };
+  }
+}
+
 async function fetchTagCategory() {
   try {
     const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
@@ -392,17 +401,19 @@ async function fetchTagCategory() {
       });
     });
 
-    tagOptions.value = [
-      ...Array.from(uniqueTags.values()),
-    ];
+    if (uniqueTags.size === 0) {
+      applyStaticTagCatalog();
+      return;
+    }
 
+    tagOptions.value = [...Array.from(uniqueTags.values())];
     tagNameByCode.value = Array.from(uniqueTags.values()).reduce((acc, tag) => {
       acc[tag.value] = tag.label;
       return acc;
     }, {});
   } catch (error) {
-    console.error('태그 옵션 조회 실패:', error);
-    tagNameByCode.value = {};
+    // 태그 API 미구현(404) — 정적 카탈로그로 폴백
+    applyStaticTagCatalog();
   }
 }
 
