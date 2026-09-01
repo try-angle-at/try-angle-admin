@@ -30,6 +30,16 @@
                     hide-details
                 />
                 <v-select
+                  v-model="search.shot"
+                  :items="shotFilterOptions"
+                    item-title="label"
+                    item-value="value"
+                    placeholder="촬영 방식"
+                    class="inputbox | mr-2"
+                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                    hide-details
+                />
+                <v-select
                   v-model="search.tagCodes"
                   :items="tagOptions"
                     item-title="label"
@@ -142,6 +152,13 @@
                       class="domain-chip"
                     ><v-icon start size="14">{{ d.icon }}</v-icon>{{ d.label }}</v-chip>
                     <v-chip
+                      v-if="item.shotMeta"
+                      size="small"
+                      variant="tonal"
+                      color="teal-darken-1"
+                      class="shot-chip"
+                    ><v-icon start size="14">{{ item.shotMeta.icon }}</v-icon>{{ item.shotMeta.label }}</v-chip>
+                    <v-chip
                       v-for="keyword in item.keywordList"
                       :key="keyword"
                       size="small"
@@ -208,6 +225,7 @@ import Util from '@/common/Util.js';
 import * as HttpHandler from '@/common/HttpHandler.js';
 import { REF_DOMAIN_OPTIONS, splitDomainCodes, domainMeta } from '@/common/refDomains.js';
 import { TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
+import { SHOT_TYPE_OPTIONS, splitShotCode, shotMeta } from '@/common/shotTypes.js';
 
 const emit = defineEmits([
   'show-right-btn',
@@ -219,9 +237,11 @@ const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, 
 const itemsPerPageOptions = [10, 20, 30, 40];
 
 const domainFilterOptions = [{ label: '전체 도메인', value: null }, ...REF_DOMAIN_OPTIONS];
+const shotFilterOptions = [{ label: '전체 촬영 방식', value: null }, ...SHOT_TYPE_OPTIONS];
 
 const search = ref({
   domain: null,
+  shot: null,
   keyword: '',
   ctgId: null,
   tagCodes: [],
@@ -294,6 +314,7 @@ async function fetchListReferences() {
       kwd: [
         ...(search.value.tagCodes || []),
         ...(search.value.domain ? [search.value.domain] : []),
+        ...(search.value.shot ? [search.value.shot] : []),
       ],
     });
 
@@ -309,7 +330,8 @@ async function fetchListReferences() {
       categoryId: reference.ctg?.ctgId,
       categoryName: reference.ctg?.ctgName || '-',
       domainList: splitDomainCodes(reference.kwd).domains.map(domainMeta).filter(Boolean),
-      keywordList: splitDomainCodes(reference.kwd).rest.map((code) => tagNameByCode.value[code] || code),
+      shotMeta: shotMeta(splitShotCode(reference.kwd).shot),
+      keywordList: splitShotCode(splitDomainCodes(reference.kwd).rest).rest.map((code) => tagNameByCode.value[code] || code),
       useCnt: reference.useCnt ?? 0,
       cDate: util.formatUnixDateTime(reference.cDate),
       uDate: util.formatUnixDateTime(reference.uDate),
@@ -425,6 +447,7 @@ function handleClickBtn(action, value) {
       search.value.ctgId = null;
       search.value.tagCodes = [];
       search.value.domain = null;
+      search.value.shot = null;
       pageNation.value.current = 1;
       fetchListReferences();
       break;
