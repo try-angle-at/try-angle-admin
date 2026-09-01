@@ -80,6 +80,13 @@
                         class="filter-chips"
                     >
                         <v-chip
+                            value="__MISSING__"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="grey-darken-1"
+                        ><v-icon start size="14">mdi-help-circle-outline</v-icon>미지정</v-chip>
+                        <v-chip
                             v-for="o in SHOT_TYPE_OPTIONS"
                             :key="o.value"
                             :value="o.value"
@@ -228,6 +235,13 @@
                       class="shot-chip"
                     ><v-icon start size="14">{{ item.shotMeta.icon }}</v-icon>{{ item.shotMeta.label }}</v-chip>
                     <v-chip
+                      v-else
+                      size="small"
+                      variant="outlined"
+                      color="grey"
+                      class="shot-chip"
+                    >촬영방식 미지정</v-chip>
+                    <v-chip
                       v-for="keyword in item.keywordList"
                       :key="keyword"
                       size="small"
@@ -294,7 +308,7 @@ import Util from '@/common/Util.js';
 import * as HttpHandler from '@/common/HttpHandler.js';
 import { REF_DOMAIN_OPTIONS, splitDomainCodes, domainMeta } from '@/common/refDomains.js';
 import { TAG_GROUPS, TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
-import { SHOT_TYPE_OPTIONS, splitShotCode, shotMeta } from '@/common/shotTypes.js';
+import { SHOT_CODES, SHOT_TYPE_OPTIONS, splitShotCode, shotMeta } from '@/common/shotTypes.js';
 
 const emit = defineEmits([
   'show-right-btn',
@@ -346,6 +360,18 @@ const paginationLength = computed(() => {
 });
 
 // ----- 라이프 사이클 ----- //
+// '미지정'(__MISSING__)과 실제 촬영 방식 값은 상호 배타 — 마지막에 누른 쪽만 남긴다
+watch(
+  () => [...search.value.shots],
+  (arr) => {
+    if (arr.includes('__MISSING__') && arr.length > 1) {
+      search.value.shots = arr[arr.length - 1] === '__MISSING__'
+        ? ['__MISSING__']
+        : arr.filter((v) => v !== '__MISSING__');
+    }
+  },
+);
+
 // 칩 필터는 토글 즉시 재조회 (대시보드 관례). 키워드는 검색 버튼/Enter로.
 watch(
   () => [search.value.ctgId, search.value.domains, search.value.shots, search.value.moods, search.value.cloths],
@@ -394,8 +420,14 @@ async function fetchListReferences() {
       ctgId: search.value.ctgId,
       title: keyword || null,
       // 축별 AND · 축 안 OR (서버 kwdGroups — PR #6)
-      kwdGroups: [search.value.domains, search.value.shots, search.value.moods, search.value.cloths]
-        .filter((g) => Array.isArray(g) && g.length > 0),
+      kwdGroups: [
+        search.value.domains,
+        search.value.shots.filter((v) => v !== '__MISSING__'),
+        search.value.moods,
+        search.value.cloths,
+      ].filter((g) => Array.isArray(g) && g.length > 0),
+      // '미지정' 칩: SHOT_* 태그가 하나도 없는 사진만 (미분류 작업 큐)
+      kwdMissing: search.value.shots.includes('__MISSING__') ? SHOT_CODES : null,
     });
 
     const list = response?.data?.items || [];

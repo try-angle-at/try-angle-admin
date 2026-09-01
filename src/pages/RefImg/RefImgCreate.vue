@@ -138,7 +138,7 @@
         </v-row>
 
         <v-row no-gutters justify="start" class="mt-1">
-          <v-label class="ml-1">촬영 방식</v-label>
+          <v-label class="ml-1">촬영 방식 <span class="required-mark">*</span></v-label>
         </v-row>
         <v-row no-gutters justify="center" class="mt-1">
             <v-select
@@ -146,9 +146,10 @@
               :items="SHOT_TYPE_OPTIONS"
               item-title="label"
               item-value="value"
-              clearable
               placeholder="셀카 / 내찍사 / 남찍사"
               class="inputbox"
+              :error-messages="errorMsg.shot"
+              @update:model-value="errorMsg.shot = ''"
               variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
             >
               <template #item="{ item, props }">
@@ -396,6 +397,7 @@ const tagOptions = ref([]);
 const tagNameByCode = ref({});
 
 const errorMsg = ref({
+  shot: '',
   ctgId: '',
   imgUrl: '',
   title: '',
@@ -656,6 +658,7 @@ function validateRefImgInput() {
     ctgId: '',
     imgUrl: '',
     title: '',
+    shot: '',
     expWeight: '',
     pri: '',
     aiDoc: '',
@@ -670,6 +673,12 @@ function validateRefImgInput() {
 
   if (!refImgForm.value.title?.trim()) {
     errorMsg.value.title = '제목을 입력해주세요.';
+    isValid = false;
+  }
+
+  // 분류 전수화 방침: 촬영 방식은 필수 (2026-09-01)
+  if (!shotCode.value) {
+    errorMsg.value.shot = '촬영 방식을 선택해주세요.';
     isValid = false;
   }
 

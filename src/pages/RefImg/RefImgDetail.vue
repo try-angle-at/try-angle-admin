@@ -87,7 +87,7 @@
             </v-row>
 
             <v-row no-gutters justify="start" class="mt-1">
-              <v-label class="ml-1">촬영 방식</v-label>
+              <v-label class="ml-1">촬영 방식 <span class="required-mark">*</span></v-label>
             </v-row>
             <v-row no-gutters justify="center" class="mt-1">
                 <v-select
@@ -95,9 +95,10 @@
                   :items="SHOT_TYPE_OPTIONS"
                   item-title="label"
                   item-value="value"
-                  clearable
                   placeholder="셀카 / 내찍사 / 남찍사"
                   class="inputbox"
+                  :error-messages="errorMsg.shot"
+                  @update:model-value="errorMsg.shot = ''"
                   variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
                 >
                   <template #item="{ item, props }">
@@ -419,6 +420,7 @@ const aiDocDisplayName = computed(() => {
 });
 
 const errorMsg = ref({
+  shot: '',
   expWeight: '',
   pri: '',
   title: '',
@@ -500,6 +502,12 @@ async function updateRefImg() {
   }
 
   if (isSubmitting.value) {
+    return;
+  }
+
+  // 분류 전수화 방침: 촬영 방식 없이는 저장 불가 (기존 미기록 사진을 채우는 지점)
+  if (!shotCode.value) {
+    errorMsg.value.shot = '촬영 방식을 선택해주세요.';
     return;
   }
 
