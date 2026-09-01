@@ -1,70 +1,139 @@
 <template>
     <v-container fluid>
-        <v-row no-gutters class="search-row | align-item-center | justify-space-between">
-            <v-col cols="auto" class="align-item-center | d-flex">
-                <v-text-field
-                    v-model="search.keyword"
-                    placeholder="이미지 검색" 
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-                <v-select
-                  v-model="search.ctgId"
-                  :items="categoryOptions"
-                    item-title="label"
-                    item-value="value"
-                    placeholder="이미지 카테고리 검색" 
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-                <v-select
-                  v-model="search.domain"
-                  :items="domainFilterOptions"
-                    item-title="label"
-                    item-value="value"
-                    placeholder="도메인 (패션/미감)"
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-                <v-select
-                  v-model="search.shot"
-                  :items="shotFilterOptions"
-                    item-title="label"
-                    item-value="value"
-                    placeholder="촬영 방식"
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-                <v-select
-                  v-model="search.tagCodes"
-                  :items="tagOptions"
-                    item-title="label"
-                    item-value="value"
-                    multiple
-                    chips
-                    placeholder="이미지 태그 검색" 
-                    class="inputbox"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-            </v-col>
-            <v-col cols="auto" class="align-item-center">
-                <v-btn
-                    @click="handleClickBtn('reset')"
-                    variant="outlined"
-                    class="thin-btn | outline-grey | btn-width | mr-2"
-                >초기화</v-btn>
-                <v-btn
-                    @click="handleClickBtn('search')"
-                    variant="outlined"
-                    class="thin-btn | fill-grey | btn-width"
-                >검색</v-btn>
-            </v-col>
-        </v-row>
+        <v-card class="filter-card | mb-2" variant="outlined" rounded="lg">
+            <v-row no-gutters class="align-item-center | justify-space-between | pa-4 | pb-2">
+                <v-col cols="auto" class="d-flex | align-center">
+                    <v-text-field
+                        v-model="search.keyword"
+                        placeholder="이미지 제목 검색"
+                        class="inputbox"
+                        variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                        hide-details
+                        prepend-inner-icon="mdi-magnify"
+                        @keyup.enter="handleClickBtn('search')"
+                    />
+                </v-col>
+                <v-col cols="auto">
+                    <v-btn
+                        @click="handleClickBtn('reset')"
+                        variant="outlined"
+                        class="thin-btn | outline-grey | btn-width | mr-2"
+                    >초기화</v-btn>
+                    <v-btn
+                        @click="handleClickBtn('search')"
+                        variant="outlined"
+                        class="thin-btn | fill-grey | btn-width"
+                    >검색</v-btn>
+                </v-col>
+            </v-row>
+
+            <v-divider class="mx-4" />
+
+            <div class="pa-4 | pt-2">
+                <!-- 카테고리 (프레이밍) — 단일 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">카테고리</span>
+                    <v-chip-group
+                        v-model="search.ctgId"
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="c in categoryChipOptions"
+                            :key="c.value"
+                            :value="c.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                        >{{ c.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 도메인 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">도메인</span>
+                    <v-chip-group
+                        v-model="search.domains"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="d in REF_DOMAIN_OPTIONS"
+                            :key="d.value"
+                            :value="d.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            :color="d.color"
+                        ><v-icon start size="14">{{ d.icon }}</v-icon>{{ d.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 촬영 방식 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">촬영 방식</span>
+                    <v-chip-group
+                        v-model="search.shots"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="o in SHOT_TYPE_OPTIONS"
+                            :key="o.value"
+                            :value="o.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="teal-darken-1"
+                        ><v-icon start size="14">{{ o.icon }}</v-icon>{{ o.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 분위기 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">분위기</span>
+                    <v-chip-group
+                        v-model="search.moods"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="t in moodChipOptions"
+                            :key="t.value"
+                            :value="t.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="deep-purple-darken-1"
+                        >{{ t.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 옷 — 다중 선택 -->
+                <div class="filter-line | mb-0">
+                    <span class="filter-label">옷</span>
+                    <v-chip-group
+                        v-model="search.cloths"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="t in clothChipOptions"
+                            :key="t.value"
+                            :value="t.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="brown-darken-1"
+                        >{{ t.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+            </div>
+        </v-card>
 
         <v-row no-gutters class="align-item-center | justify-space-between | mt-8 | mb-2 | ml-2">
             <v-col class="search-label">
@@ -217,14 +286,14 @@
 
 <script setup>
 // ----- 선언부 ----- //
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
 import { REF_DOMAIN_OPTIONS, splitDomainCodes, domainMeta } from '@/common/refDomains.js';
-import { TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
+import { TAG_GROUPS, TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
 import { SHOT_TYPE_OPTIONS, splitShotCode, shotMeta } from '@/common/shotTypes.js';
 
 const emit = defineEmits([
@@ -236,15 +305,18 @@ const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, 
 
 const itemsPerPageOptions = [10, 20, 30, 40];
 
-const domainFilterOptions = [{ label: '전체 도메인', value: null }, ...REF_DOMAIN_OPTIONS];
-const shotFilterOptions = [{ label: '전체 촬영 방식', value: null }, ...SHOT_TYPE_OPTIONS];
+// 칩 필터 옵션 — 카테고리는 서버 목록(categoryOptions)에서 '전체' 항목 제외
+const categoryChipOptions = computed(() => categoryOptions.value.filter((c) => c.value !== null));
+const moodChipOptions = TAG_GROUPS.find((g) => g.header === '분위기')?.codes || [];
+const clothChipOptions = TAG_GROUPS.find((g) => g.header.startsWith('옷'))?.codes || [];
 
 const search = ref({
-  domain: null,
-  shot: null,
+  domains: [],
+  shots: [],
+  moods: [],
+  cloths: [],
   keyword: '',
   ctgId: null,
-  tagCodes: [],
 });
 
 const pageNation = ref({
@@ -274,6 +346,16 @@ const paginationLength = computed(() => {
 });
 
 // ----- 라이프 사이클 ----- //
+// 칩 필터는 토글 즉시 재조회 (대시보드 관례). 키워드는 검색 버튼/Enter로.
+watch(
+  () => [search.value.ctgId, search.value.domains, search.value.shots, search.value.moods, search.value.cloths],
+  () => {
+    pageNation.value.current = 1;
+    fetchListReferences();
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   emit('show-right-btn');
   fetchListCategory();
@@ -311,11 +393,9 @@ async function fetchListReferences() {
       limit: pageNation.value.limit,
       ctgId: search.value.ctgId,
       title: keyword || null,
-      kwd: [
-        ...(search.value.tagCodes || []),
-        ...(search.value.domain ? [search.value.domain] : []),
-        ...(search.value.shot ? [search.value.shot] : []),
-      ],
+      // 축별 AND · 축 안 OR (서버 kwdGroups — PR #6)
+      kwdGroups: [search.value.domains, search.value.shots, search.value.moods, search.value.cloths]
+        .filter((g) => Array.isArray(g) && g.length > 0),
     });
 
     const list = response?.data?.items || [];
@@ -445,9 +525,10 @@ function handleClickBtn(action, value) {
     case 'reset':
       search.value.keyword = '';
       search.value.ctgId = null;
-      search.value.tagCodes = [];
-      search.value.domain = null;
-      search.value.shot = null;
+      search.value.domains = [];
+      search.value.shots = [];
+      search.value.moods = [];
+      search.value.cloths = [];
       pageNation.value.current = 1;
       fetchListReferences();
       break;
@@ -502,6 +583,34 @@ function handleItemsPerPageChange(limit) {
 </script> 
 
 <style scoped>
+.filter-card {
+  border-color: #E5E8EB;
+  background: #ffffff;
+}
+.filter-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.filter-label {
+  flex: 0 0 72px;
+  padding-top: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6A7282;
+}
+.filter-chips {
+  flex: 1;
+}
+.filter-chips :deep(.v-chip) {
+  border-color: #E5E8EB;
+  color: #4A5565;
+}
+.chip-on {
+  font-weight: 600;
+}
+
 .align-item-center {
   align-items: center;
 }
