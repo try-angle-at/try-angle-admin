@@ -119,6 +119,27 @@
                     </v-chip-group>
                 </div>
 
+                <!-- 장소 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">장소</span>
+                    <v-chip-group
+                        v-model="search.scenes"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="t in sceneChipOptions"
+                            :key="t.value"
+                            :value="t.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="green-darken-2"
+                        >{{ t.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
                 <!-- 옷 — 다중 선택 -->
                 <div class="filter-line | mb-0">
                     <span class="filter-label">옷</span>
@@ -323,11 +344,13 @@ const itemsPerPageOptions = [10, 20, 30, 40];
 const categoryChipOptions = computed(() => categoryOptions.value.filter((c) => c.value !== null));
 const moodChipOptions = TAG_GROUPS.find((g) => g.header === '분위기')?.codes || [];
 const clothChipOptions = TAG_GROUPS.find((g) => g.header.startsWith('옷'))?.codes || [];
+const sceneChipOptions = TAG_GROUPS.find((g) => g.header === '장소')?.codes || [];
 
 const search = ref({
   domains: [],
   shots: [],
   moods: [],
+  scenes: [],
   cloths: [],
   keyword: '',
   ctgId: null,
@@ -374,7 +397,7 @@ watch(
 
 // 칩 필터는 토글 즉시 재조회 (대시보드 관례). 키워드는 검색 버튼/Enter로.
 watch(
-  () => [search.value.ctgId, search.value.domains, search.value.shots, search.value.moods, search.value.cloths],
+  () => [search.value.ctgId, search.value.domains, search.value.shots, search.value.moods, search.value.scenes, search.value.cloths],
   () => {
     pageNation.value.current = 1;
     fetchListReferences();
@@ -424,6 +447,7 @@ async function fetchListReferences() {
         search.value.domains,
         search.value.shots.filter((v) => v !== '__MISSING__'),
         search.value.moods,
+        search.value.scenes,
         search.value.cloths,
       ].filter((g) => Array.isArray(g) && g.length > 0),
       // '미지정' 칩: SHOT_* 태그가 하나도 없는 사진만 (미분류 작업 큐)
@@ -560,6 +584,7 @@ function handleClickBtn(action, value) {
       search.value.domains = [];
       search.value.shots = [];
       search.value.moods = [];
+      search.value.scenes = [];
       search.value.cloths = [];
       pageNation.value.current = 1;
       fetchListReferences();

@@ -5,6 +5,8 @@ export const SHOT_TYPE_OPTIONS = [
   { value: 'SHOT_SELFIE', label: '셀카', icon: 'mdi-camera-front-variant' },
   { value: 'SHOT_BY_ME', label: '내찍사', icon: 'mdi-camera' },
   { value: 'SHOT_BY_OTHER', label: '남찍사', icon: 'mdi-camera-account' },
+  // 출처상 알 수 없는 경우(수집 레퍼런스 등) — 억지 추정 대신 정직한 값
+  { value: 'SHOT_UNKNOWN', label: '미상', icon: 'mdi-help-circle-outline' },
 ];
 
 export const SHOT_CODES = SHOT_TYPE_OPTIONS.map((o) => o.value);

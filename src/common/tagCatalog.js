@@ -6,12 +6,22 @@ export const TAG_GROUPS = [
   {
     header: '분위기',
     codes: [
+      { value: 'MOOD_CASUAL', label: '캐주얼' },
       { value: 'MOOD_CUTE', label: '러블리' },
       { value: 'MOOD_Y2K', label: 'Y2K' },
       { value: 'MOOD_STREET', label: '스트릿' },
       { value: 'MOOD_CHIC', label: '시크' },
       { value: 'MOOD_REFRESH', label: '청량' },
       { value: 'MOOD_VINTAGE', label: '빈티지' },
+    ],
+  },
+  {
+    // 장소·공간 축 — 레퍼런스 aiDoc(meta.scene)에서 확인된 값부터 시작.
+    // reference-lab 가족 분류(자연/물가/상점실내/주거…)는 협의 후 확장
+    header: '장소',
+    codes: [
+      { value: 'SCENE_CAFE', label: '카페' },
+      { value: 'SCENE_STREET', label: '거리' },
     ],
   },
   {
