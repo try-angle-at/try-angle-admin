@@ -398,6 +398,9 @@ export async function listReferences(params = {}) {
         ctgId: params.ctgId ?? null,
         title: params.title ?? null,
         kwd: Array.isArray(params.kwd) ? params.kwd : [],
+        // 축별 AND 검색 (서버 ref/list kwdGroups — 그룹 안 OR, 그룹 간 AND)
+        kwdGroups: Array.isArray(params.kwdGroups) ? params.kwdGroups : null,
+        kwdMissing: Array.isArray(params.kwdMissing) ? params.kwdMissing : null,
       },
     }),
   });

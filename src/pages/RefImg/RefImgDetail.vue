@@ -87,11 +87,69 @@
             </v-row>
 
             <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">촬영 방식 <span class="required-mark">*</span></v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+                <v-select
+                  v-model="shotCode"
+                  :items="SHOT_TYPE_OPTIONS"
+                  item-title="label"
+                  item-value="value"
+                  placeholder="셀카 / 내찍사 / 남찍사"
+                  class="inputbox"
+                  :error-messages="errorMsg.shot"
+                  @update:model-value="errorMsg.shot = ''"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                >
+                  <template #item="{ item, props }">
+                    <v-list-item v-bind="props" :title="null">
+                      <v-list-item-title>
+                        <v-icon size="16" color="teal-darken-1" class="mr-1">{{ item.raw.icon }}</v-icon>
+                        {{ item.raw.label }}
+                      </v-list-item-title>
+                    </v-list-item>
+                  </template>
+                </v-select>
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1">
+              <v-label class="ml-1">도메인 (패션/미감)</v-label>
+            </v-row>
+            <v-row no-gutters justify="center" class="mt-1">
+                <v-select
+                  v-model="domainCodes"
+                  :items="REF_DOMAIN_OPTIONS"
+                  item-title="label"
+                  item-value="value"
+                  multiple
+                  chips
+                  closable-chips
+                  placeholder="이 레퍼런스가 속한 도메인 선택"
+                  class="inputbox"
+                  variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                >
+                  <template #chip="{ item, props }">
+                    <v-chip v-bind="props" :color="item.raw.color" variant="flat" size="small">
+                      <v-icon start size="14">{{ item.raw.icon }}</v-icon>{{ item.raw.label }}
+                    </v-chip>
+                  </template>
+                  <template #item="{ item, props }">
+                    <v-list-item v-bind="props" :title="null">
+                      <v-list-item-title>
+                        <v-icon size="16" :color="item.raw.color" class="mr-1">{{ item.raw.icon }}</v-icon>
+                        {{ item.raw.label }}
+                      </v-list-item-title>
+                    </v-list-item>
+                  </template>
+                </v-select>
+            </v-row>
+
+            <v-row no-gutters justify="start" class="mt-1">
               <v-label class="ml-1">이미지 태그</v-label>
             </v-row>
             <v-row no-gutters justify="center" class="mt-1">
                 <v-select
-                  v-model="refImgDetail.kwd"
+                  v-model="kwdTags"
                   :items="tagOptions"
                   item-title="label"
                   item-value="value"
@@ -261,6 +319,9 @@ import Util from '@/common/Util.js';
 import RefImgAiDocs from './RefImgAiDocs.vue';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
+import { REF_DOMAIN_OPTIONS, splitDomainCodes } from '@/common/refDomains.js';
+import { TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
+import { SHOT_TYPE_OPTIONS, splitShotCode } from '@/common/shotTypes.js';
 
 const props = defineProps({
   refImgId: {
@@ -293,6 +354,32 @@ const refImgDetail = ref({
   imgUrl: '',
   cDate: '',
   uDate: '',
+});
+
+// 도메인(DOMAIN_*)과 일반 태그를 같은 kwd 배열 위에서 나눠 편집 (저장/불러오기 무변경)
+// 촬영 방식(SHOT_*)은 1장당 1개 — kwd 배열 위 단일값 게터/세터 (저장 코드 무변경)
+const shotCode = computed({
+  get: () => splitShotCode(refImgDetail.value.kwd).shot,
+  set: (v) => {
+    const { rest } = splitShotCode(refImgDetail.value.kwd);
+    refImgDetail.value.kwd = v ? [...rest, v] : rest;
+  },
+});
+
+const domainCodes = computed({
+  get: () => splitDomainCodes(refImgDetail.value.kwd).domains,
+  set: (vals) => {
+    const { rest } = splitDomainCodes(refImgDetail.value.kwd);
+    refImgDetail.value.kwd = [...(vals || []), ...rest];
+  },
+});
+const kwdTags = computed({
+  get: () => splitShotCode(splitDomainCodes(refImgDetail.value.kwd).rest).rest,
+  set: (vals) => {
+    const { domains, rest } = splitDomainCodes(refImgDetail.value.kwd);
+    const { shot } = splitShotCode(rest);
+    refImgDetail.value.kwd = [...domains, ...(shot ? [shot] : []), ...(vals || [])];
+  },
 });
 
 const aiDoc = ref(null);
@@ -333,6 +420,7 @@ const aiDocDisplayName = computed(() => {
 });
 
 const errorMsg = ref({
+  shot: '',
   expWeight: '',
   pri: '',
   title: '',
@@ -414,6 +502,12 @@ async function updateRefImg() {
   }
 
   if (isSubmitting.value) {
+    return;
+  }
+
+  // 분류 전수화 방침: 촬영 방식 없이는 저장 불가 (기존 미기록 사진을 채우는 지점)
+  if (!shotCode.value) {
+    errorMsg.value.shot = '촬영 방식을 선택해주세요.';
     return;
   }
 
@@ -556,6 +650,14 @@ async function fetchListCategory() {
   }
 }
 
+function applyStaticTagCatalog() {
+  // 서버 태그 API(/tag/*) 미구현 상태의 정적 분류 카탈로그 (tagCatalog.js)
+  tagOptions.value = [...TAG_SELECT_ITEMS];
+  if (typeof tagNameByCode !== 'undefined') {
+    tagNameByCode.value = { ...TAG_LABEL_BY_CODE };
+  }
+}
+
 async function fetchTagCategory() {
   try {
     const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
@@ -594,12 +696,19 @@ async function fetchTagCategory() {
       });
     });
 
-    tagOptions.value = [
-      ...Array.from(uniqueTags.values()),
-    ];
+    if (uniqueTags.size === 0) {
+      applyStaticTagCatalog();
+      return;
+    }
+
+    tagOptions.value = [...Array.from(uniqueTags.values())];
+    tagNameByCode.value = Array.from(uniqueTags.values()).reduce((acc, tag) => {
+      acc[tag.value] = tag.label;
+      return acc;
+    }, {});
   } catch (error) {
-    console.error('태그 옵션 조회 실패:', error);
-    tagNameByCode.value = {};
+    // 태그 API 미구현(404) — 정적 카탈로그로 폴백
+    applyStaticTagCatalog();
   }
 }
 

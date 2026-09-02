@@ -1,50 +1,167 @@
 <template>
     <v-container fluid>
-        <v-row no-gutters class="search-row | align-item-center | justify-space-between">
-            <v-col cols="auto" class="align-item-center | d-flex">
-                <v-text-field
-                    v-model="search.keyword"
-                    placeholder="이미지 검색" 
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-                <v-select
-                  v-model="search.ctgId"
-                  :items="categoryOptions"
-                    item-title="label"
-                    item-value="value"
-                    placeholder="이미지 카테고리 검색" 
-                    class="inputbox | mr-2"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-                <v-select
-                  v-model="search.tagCodes"
-                  :items="tagOptions"
-                    item-title="label"
-                    item-value="value"
-                    multiple
-                    chips
-                    placeholder="이미지 태그 검색" 
-                    class="inputbox"
-                    variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
-                    hide-details
-                />
-            </v-col>
-            <v-col cols="auto" class="align-item-center">
-                <v-btn
-                    @click="handleClickBtn('reset')"
-                    variant="outlined"
-                    class="thin-btn | outline-grey | btn-width | mr-2"
-                >초기화</v-btn>
-                <v-btn
-                    @click="handleClickBtn('search')"
-                    variant="outlined"
-                    class="thin-btn | fill-grey | btn-width"
-                >검색</v-btn>
-            </v-col>
-        </v-row>
+        <v-card class="filter-card | mb-2" variant="outlined" rounded="lg">
+            <v-row no-gutters class="align-item-center | justify-space-between | pa-4 | pb-2">
+                <v-col cols="auto" class="d-flex | align-center">
+                    <v-text-field
+                        v-model="search.keyword"
+                        placeholder="이미지 제목 검색"
+                        class="inputbox"
+                        variant="outlined" density="compact" rounded="lg" bg-color="#ffffff" base-color="#4A5565" color="#E5E8EB"
+                        hide-details
+                        prepend-inner-icon="mdi-magnify"
+                        @keyup.enter="handleClickBtn('search')"
+                    />
+                </v-col>
+                <v-col cols="auto">
+                    <v-btn
+                        @click="handleClickBtn('reset')"
+                        variant="outlined"
+                        class="thin-btn | outline-grey | btn-width | mr-2"
+                    >초기화</v-btn>
+                    <v-btn
+                        @click="handleClickBtn('search')"
+                        variant="outlined"
+                        class="thin-btn | fill-grey | btn-width"
+                    >검색</v-btn>
+                </v-col>
+            </v-row>
+
+            <v-divider class="mx-4" />
+
+            <div class="pa-4 | pt-2">
+                <!-- 카테고리 (프레이밍) — 단일 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">카테고리</span>
+                    <v-chip-group
+                        v-model="search.ctgId"
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="c in categoryChipOptions"
+                            :key="c.value"
+                            :value="c.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                        >{{ c.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 도메인 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">도메인</span>
+                    <v-chip-group
+                        v-model="search.domains"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="d in REF_DOMAIN_OPTIONS"
+                            :key="d.value"
+                            :value="d.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            :color="d.color"
+                        ><v-icon start size="14">{{ d.icon }}</v-icon>{{ d.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 촬영 방식 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">촬영 방식</span>
+                    <v-chip-group
+                        v-model="search.shots"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            value="__MISSING__"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="grey-darken-1"
+                        ><v-icon start size="14">mdi-help-circle-outline</v-icon>미지정</v-chip>
+                        <v-chip
+                            v-for="o in SHOT_TYPE_OPTIONS"
+                            :key="o.value"
+                            :value="o.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="teal-darken-1"
+                        ><v-icon start size="14">{{ o.icon }}</v-icon>{{ o.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 분위기 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">분위기</span>
+                    <v-chip-group
+                        v-model="search.moods"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="t in moodChipOptions"
+                            :key="t.value"
+                            :value="t.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="deep-purple-darken-1"
+                        >{{ t.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 장소 — 다중 선택 -->
+                <div class="filter-line">
+                    <span class="filter-label">장소</span>
+                    <v-chip-group
+                        v-model="search.scenes"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="t in sceneChipOptions"
+                            :key="t.value"
+                            :value="t.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="green-darken-2"
+                        >{{ t.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+
+                <!-- 옷 — 다중 선택 -->
+                <div class="filter-line | mb-0">
+                    <span class="filter-label">옷</span>
+                    <v-chip-group
+                        v-model="search.cloths"
+                        multiple
+                        selected-class="chip-on"
+                        class="filter-chips"
+                    >
+                        <v-chip
+                            v-for="t in clothChipOptions"
+                            :key="t.value"
+                            :value="t.value"
+                            size="small"
+                            variant="outlined"
+                            filter
+                            color="brown-darken-1"
+                        >{{ t.label }}</v-chip>
+                    </v-chip-group>
+                </div>
+            </div>
+        </v-card>
 
         <v-row no-gutters class="align-item-center | justify-space-between | mt-8 | mb-2 | ml-2">
             <v-col class="search-label">
@@ -124,6 +241,28 @@
                       {{ item.categoryName }}
                     </v-chip>
                     <v-chip
+                      v-for="d in item.domainList"
+                      :key="d.value"
+                      size="small"
+                      variant="flat"
+                      :color="d.color"
+                      class="domain-chip"
+                    ><v-icon start size="14">{{ d.icon }}</v-icon>{{ d.label }}</v-chip>
+                    <v-chip
+                      v-if="item.shotMeta"
+                      size="small"
+                      variant="tonal"
+                      color="teal-darken-1"
+                      class="shot-chip"
+                    ><v-icon start size="14">{{ item.shotMeta.icon }}</v-icon>{{ item.shotMeta.label }}</v-chip>
+                    <v-chip
+                      v-else
+                      size="small"
+                      variant="outlined"
+                      color="grey"
+                      class="shot-chip"
+                    >촬영방식 미지정</v-chip>
+                    <v-chip
                       v-for="keyword in item.keywordList"
                       :key="keyword"
                       size="small"
@@ -182,12 +321,15 @@
 
 <script setup>
 // ----- 선언부 ----- //
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { navigateTo } from '@/common/RouterUtil.js';
 import Util from '@/common/Util.js';
 
 import * as HttpHandler from '@/common/HttpHandler.js';
+import { REF_DOMAIN_OPTIONS, splitDomainCodes, domainMeta } from '@/common/refDomains.js';
+import { TAG_GROUPS, TAG_SELECT_ITEMS, TAG_LABEL_BY_CODE } from '@/common/tagCatalog.js';
+import { SHOT_CODES, SHOT_TYPE_OPTIONS, splitShotCode, shotMeta } from '@/common/shotTypes.js';
 
 const emit = defineEmits([
   'show-right-btn',
@@ -198,10 +340,20 @@ const imageBaseUrl = (import.meta.env.VITE_IMAGE_BASE_URL || '').replace(/\/$/, 
 
 const itemsPerPageOptions = [10, 20, 30, 40];
 
+// 칩 필터 옵션 — 카테고리는 서버 목록(categoryOptions)에서 '전체' 항목 제외
+const categoryChipOptions = computed(() => categoryOptions.value.filter((c) => c.value !== null));
+const moodChipOptions = TAG_GROUPS.find((g) => g.header === '분위기')?.codes || [];
+const clothChipOptions = TAG_GROUPS.find((g) => g.header.startsWith('옷'))?.codes || [];
+const sceneChipOptions = TAG_GROUPS.find((g) => g.header === '장소')?.codes || [];
+
 const search = ref({
+  domains: [],
+  shots: [],
+  moods: [],
+  scenes: [],
+  cloths: [],
   keyword: '',
   ctgId: null,
-  tagCodes: [],
 });
 
 const pageNation = ref({
@@ -231,6 +383,28 @@ const paginationLength = computed(() => {
 });
 
 // ----- 라이프 사이클 ----- //
+// '미지정'(__MISSING__)과 실제 촬영 방식 값은 상호 배타 — 마지막에 누른 쪽만 남긴다
+watch(
+  () => [...search.value.shots],
+  (arr) => {
+    if (arr.includes('__MISSING__') && arr.length > 1) {
+      search.value.shots = arr[arr.length - 1] === '__MISSING__'
+        ? ['__MISSING__']
+        : arr.filter((v) => v !== '__MISSING__');
+    }
+  },
+);
+
+// 칩 필터는 토글 즉시 재조회 (대시보드 관례). 키워드는 검색 버튼/Enter로.
+watch(
+  () => [search.value.ctgId, search.value.domains, search.value.shots, search.value.moods, search.value.scenes, search.value.cloths],
+  () => {
+    pageNation.value.current = 1;
+    fetchListReferences();
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   emit('show-right-btn');
   fetchListCategory();
@@ -268,7 +442,16 @@ async function fetchListReferences() {
       limit: pageNation.value.limit,
       ctgId: search.value.ctgId,
       title: keyword || null,
-      kwd: search.value.tagCodes,
+      // 축별 AND · 축 안 OR (서버 kwdGroups — PR #6)
+      kwdGroups: [
+        search.value.domains,
+        search.value.shots.filter((v) => v !== '__MISSING__'),
+        search.value.moods,
+        search.value.scenes,
+        search.value.cloths,
+      ].filter((g) => Array.isArray(g) && g.length > 0),
+      // '미지정' 칩: SHOT_* 태그가 하나도 없는 사진만 (미분류 작업 큐)
+      kwdMissing: search.value.shots.includes('__MISSING__') ? SHOT_CODES : null,
     });
 
     const list = response?.data?.items || [];
@@ -282,9 +465,9 @@ async function fetchListReferences() {
       imgUrl: buildThumbnailUrl(reference.imgUrl),
       categoryId: reference.ctg?.ctgId,
       categoryName: reference.ctg?.ctgName || '-',
-      keywordList: Array.isArray(reference.kwd)
-        ? reference.kwd.map((code) => tagNameByCode.value[code] || code)
-        : [],
+      domainList: splitDomainCodes(reference.kwd).domains.map(domainMeta).filter(Boolean),
+      shotMeta: shotMeta(splitShotCode(reference.kwd).shot),
+      keywordList: splitShotCode(splitDomainCodes(reference.kwd).rest).rest.map((code) => tagNameByCode.value[code] || code),
       useCnt: reference.useCnt ?? 0,
       cDate: util.formatUnixDateTime(reference.cDate),
       uDate: util.formatUnixDateTime(reference.uDate),
@@ -330,6 +513,14 @@ async function fetchListCategory() {
   }
 }
 
+function applyStaticTagCatalog() {
+  // 서버 태그 API(/tag/*) 미구현 상태의 정적 분류 카탈로그 (tagCatalog.js)
+  tagOptions.value = [...TAG_SELECT_ITEMS];
+  if (typeof tagNameByCode !== 'undefined') {
+    tagNameByCode.value = { ...TAG_LABEL_BY_CODE };
+  }
+}
+
 async function fetchTagCategory() {
   try {
     const [moodTagResponse, clothTagResponse, shotTagResponse] = await Promise.all([
@@ -368,17 +559,19 @@ async function fetchTagCategory() {
       });
     });
 
-    tagOptions.value = [
-      ...Array.from(uniqueTags.values()),
-    ];
+    if (uniqueTags.size === 0) {
+      applyStaticTagCatalog();
+      return;
+    }
 
+    tagOptions.value = [...Array.from(uniqueTags.values())];
     tagNameByCode.value = Array.from(uniqueTags.values()).reduce((acc, tag) => {
       acc[tag.value] = tag.label;
       return acc;
     }, {});
   } catch (error) {
-    console.error('태그 옵션 조회 실패:', error);
-    tagNameByCode.value = {};
+    // 태그 API 미구현(404) — 정적 카탈로그로 폴백
+    applyStaticTagCatalog();
   }
 }
 
@@ -388,7 +581,11 @@ function handleClickBtn(action, value) {
     case 'reset':
       search.value.keyword = '';
       search.value.ctgId = null;
-      search.value.tagCodes = [];
+      search.value.domains = [];
+      search.value.shots = [];
+      search.value.moods = [];
+      search.value.scenes = [];
+      search.value.cloths = [];
       pageNation.value.current = 1;
       fetchListReferences();
       break;
@@ -443,6 +640,34 @@ function handleItemsPerPageChange(limit) {
 </script> 
 
 <style scoped>
+.filter-card {
+  border-color: #E5E8EB;
+  background: #ffffff;
+}
+.filter-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.filter-label {
+  flex: 0 0 72px;
+  padding-top: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6A7282;
+}
+.filter-chips {
+  flex: 1;
+}
+.filter-chips :deep(.v-chip) {
+  border-color: #E5E8EB;
+  color: #4A5565;
+}
+.chip-on {
+  font-weight: 600;
+}
+
 .align-item-center {
   align-items: center;
 }
