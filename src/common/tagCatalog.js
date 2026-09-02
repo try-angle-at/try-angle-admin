@@ -7,7 +7,7 @@ export const TAG_GROUPS = [
     header: '분위기',
     codes: [
       { value: 'MOOD_CASUAL', label: '캐주얼' },
-      { value: 'MOOD_CUTE', label: '러블리' },
+      { value: 'MOOD_LOVELY', label: '러블리' },
       { value: 'MOOD_Y2K', label: 'Y2K' },
       { value: 'MOOD_STREET', label: '스트릿' },
       { value: 'MOOD_CHIC', label: '시크' },
@@ -25,11 +25,30 @@ export const TAG_GROUPS = [
     ],
   },
   {
+    // aiDoc shot.shotType의 세부 샷 범위 — 등록 스크립트가 kwd에도 ST_* 로 기록(핀터레스트분).
+    // 필터 칩 행에는 안 올리고(프레이밍 카테고리로 충분) 카드 칩 한글 이름표용
+    header: '샷 범위 (aiDoc)',
+    codes: [
+      { value: 'ST_CLOSE_FACE', label: '얼굴 클로즈업' },
+      { value: 'ST_HEAD_TO_CHEST', label: '머리~가슴' },
+      { value: 'ST_HEAD_TO_WAIST', label: '머리~허리' },
+      { value: 'ST_HEAD_TO_THIGH', label: '머리~허벅지' },
+      { value: 'ST_HEAD_TO_KNEE', label: '머리~무릎' },
+      { value: 'ST_HEAD_TO_FEET', label: '머리~발끝' },
+      { value: 'ST_NOHEAD_WAIST', label: '목아래~허리' },
+      { value: 'ST_NOHEAD_THIGH', label: '목아래~허벅지' },
+      { value: 'ST_NOHEAD_KNEE', label: '목아래~무릎' },
+      { value: 'ST_NOHEAD_FULL', label: '목아래~발끝' },
+      { value: 'ST_WAIST_TO_FEET', label: '허리~발끝' },
+    ],
+  },
+  {
     header: '옷 (대분류)',
     codes: [
       { value: 'CLOTH_TOP', label: '상의' },
       { value: 'CLOTH_BOTTOM', label: '하의' },
       { value: 'CLOTH_OUTER', label: '아우터' },
+      { value: 'CLOTH_CARDIGAN', label: '가디건' },
       { value: 'CLOTH_DRESS', label: '원피스' },
       { value: 'CLOTH_SKIRT', label: '치마' },
       { value: 'CLOTH_SHOES', label: '신발' },
